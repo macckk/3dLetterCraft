@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useDesignStore } from '@/store/design'
 import { getTemplate } from '@/templates/registry'
 import type { ControlType } from '@/templates/types'
+import { Validator } from './Validator'
 
 type FontGroup = { labelKey: string; fonts: string[] }
 
@@ -36,6 +37,8 @@ export function ControlPanel() {
         </div>
         <div className="text-sm text-neutral-500">{t(tpl.descriptionKey)}</div>
       </div>
+
+      <Validator />
 
       {tpl.presets && tpl.presets.length > 0 && (
         <div className="flex flex-col gap-1.5">

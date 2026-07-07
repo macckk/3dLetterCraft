@@ -31,6 +31,14 @@ export interface BuildContext {
   mode: BuildMode
 }
 
+export type ValidationSeverity = 'warning' | 'error'
+
+export interface ValidationIssue {
+  severity: ValidationSeverity
+  messageKey: string
+  params?: Record<string, string | number>
+}
+
 export interface TemplatePreset {
   id: string
   nameKey: string
@@ -45,6 +53,7 @@ export interface TemplateDefinition {
   thumbnail?: string
   controls: ControlType[]
   presets?: TemplatePreset[]
+  validate?: (values: ControlValues) => ValidationIssue[]
   build: (ctx: BuildContext) => Promise<Group> | Group
   /**
    * Return one or more meshes labeled by color for exporting.

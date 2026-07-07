@@ -37,6 +37,16 @@
   "presets": {
     "label": "Quick styles"
   },
+  "validation": {
+    "title_one": "{{count}} thing to check before printing",
+    "title_other": "{{count}} things to check before printing",
+    "scriptReliefThin": "Script relief is too thin ({{value}}mm). Recommended minimum: {{min}}mm.",
+    "letterThin": "Letter is very thin ({{value}}mm). Consider at least {{min}}mm.",
+    "zeroTolerance": "Fit clearance is 0. Parts will likely not slot together after printing.",
+    "pocketTooDeep": "Script pocket deeper than half the letter thickness ({{letterThk}}mm). May weaken the piece.",
+    "scriptTooTall": "Script name is taller than 85% of the big letter. It may overflow.",
+    "baseTooThin": "Base too thin for the embed depth. Consider raising to at least {{min}}mm."
+  },
   "templates": {
     "nameWithScript": {
       "name": "Name with script",

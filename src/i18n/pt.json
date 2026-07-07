@@ -37,6 +37,16 @@
   "presets": {
     "label": "Estilos rápidos"
   },
+  "validation": {
+    "title_one": "{{count}} atenção antes de imprimir",
+    "title_other": "{{count}} atenções antes de imprimir",
+    "scriptReliefThin": "Relevo do cursivo muito fino ({{value}}mm). Mínimo recomendado: {{min}}mm.",
+    "letterThin": "Letra muito fina ({{value}}mm). Considere pelo menos {{min}}mm.",
+    "zeroTolerance": "Folga de encaixe está em 0. As peças provavelmente não vão se encaixar após a impressão.",
+    "pocketTooDeep": "Profundidade do cursivo maior que metade da espessura da letra ({{letterThk}}mm). Pode enfraquecer a peça.",
+    "scriptTooTall": "Nome cursivo maior que 85% da altura da letra. Pode estourar as bordas.",
+    "baseTooThin": "Base fina demais para o encaixe. Considere aumentar para pelo menos {{min}}mm."
+  },
   "templates": {
     "nameWithScript": {
       "name": "Nome com cursiva",

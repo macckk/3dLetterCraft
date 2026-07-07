@@ -1,6 +1,6 @@
 import { Box3, Group, Matrix4, Mesh, MeshStandardMaterial } from 'three'
 import type { BufferGeometry } from 'three'
-import type { ControlValues, TemplateDefinition } from './types'
+import type { ControlValues, TemplateDefinition, ValidationIssue } from './types'
 import { TOLERANCE_DEFAULT, TOLERANCE_MAX, TOLERANCE_MIN, TOLERANCE_STEP } from '@/lib/tolerance'
 import { loadFont } from '@/lib/fonts/loader'
 import { extrudeText } from '@/lib/geometry/text'
@@ -83,6 +83,44 @@ export const nameWithScriptTemplate: TemplateDefinition = {
       },
     },
   ],
+
+  validate: (values: ControlValues): ValidationIssue[] => {
+    const issues: ValidationIssue[] = []
+    const letterThk    = Number(values.letterThickness)
+    const scriptRelief = Number(values.scriptRelief)
+    const scriptInset  = Number(values.scriptInset)
+    const scriptHeight = Number(values.scriptHeight)
+    const bigHeight    = Number(values.bigHeight)
+    const tolerance    = Number(values.tolerance)
+    const includeStand = Boolean(values.includeStand)
+    const baseHeight   = Number(values.baseHeight)
+    const letterEmbed  = Number(values.letterEmbed ?? 0)
+
+    // Wall/feature strength (~0.8mm = 2 perimeters at 0.4mm nozzle)
+    if (scriptRelief > 0 && scriptRelief < 0.8) {
+      issues.push({ severity: 'warning', messageKey: 'validation.scriptReliefThin', params: { min: 0.8, value: scriptRelief } })
+    }
+    if (letterThk < 2) {
+      issues.push({ severity: 'warning', messageKey: 'validation.letterThin', params: { min: 2, value: letterThk } })
+    }
+    // Fit clearance vs. inset/embed
+    if (tolerance === 0 && (scriptInset > 0 || letterEmbed > 0)) {
+      issues.push({ severity: 'warning', messageKey: 'validation.zeroTolerance' })
+    }
+    // Pocket vs. wall proportions
+    if (scriptInset > letterThk / 2) {
+      issues.push({ severity: 'warning', messageKey: 'validation.pocketTooDeep', params: { letterThk } })
+    }
+    // Script vertical fit inside the big letter
+    if (scriptHeight > bigHeight * 0.85) {
+      issues.push({ severity: 'warning', messageKey: 'validation.scriptTooTall' })
+    }
+    // Base can host the embed
+    if (includeStand && letterEmbed > 0 && baseHeight < letterEmbed + 3) {
+      issues.push({ severity: 'warning', messageKey: 'validation.baseTooThin', params: { min: letterEmbed + 3 } })
+    }
+    return issues
+  },
 
   build: async ({ values, mode }) => {
     const name           = String(values.name ?? 'A').trim() || 'A'
