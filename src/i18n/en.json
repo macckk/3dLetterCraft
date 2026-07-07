@@ -1,0 +1,36 @@
+{
+  "app": {
+    "title": "3dLetterCraft",
+    "tagline": "Design custom 3D-printable name pieces",
+    "free": "Free"
+  },
+  "nav": {
+    "templates": "Templates",
+    "myDesigns": "My designs",
+    "download": "Download STL"
+  },
+  "controls": {
+    "name": "Name",
+    "bigFont": "Big letter font",
+    "scriptFont": "Script font",
+    "bigColor": "Big letter color",
+    "scriptColor": "Script color",
+    "bigHeight": "Big letter height",
+    "baseThickness": "Base thickness",
+    "scriptDepth": "Script relief depth",
+    "tolerance": "Fit clearance",
+    "includeStand": "Include stand"
+  },
+  "templates": {
+    "nameWithScript": {
+      "name": "Name with script",
+      "description": "Large initial with the full name overlaid in cursive"
+    }
+  },
+  "actions": {
+    "reset": "Reset",
+    "save": "Save design",
+    "download": "Download",
+    "language": "Language"
+  }
+}

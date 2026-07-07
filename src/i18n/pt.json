@@ -1,0 +1,36 @@
+{
+  "app": {
+    "title": "3dLetterCraft",
+    "tagline": "Crie peças 3D personalizadas com o seu nome",
+    "free": "Grátis"
+  },
+  "nav": {
+    "templates": "Modelos",
+    "myDesigns": "Meus designs",
+    "download": "Baixar STL"
+  },
+  "controls": {
+    "name": "Nome",
+    "bigFont": "Fonte da letra grande",
+    "scriptFont": "Fonte do nome cursivo",
+    "bigColor": "Cor da letra grande",
+    "scriptColor": "Cor do nome cursivo",
+    "bigHeight": "Altura da letra grande",
+    "baseThickness": "Espessura da base",
+    "scriptDepth": "Relevo do nome",
+    "tolerance": "Folga de encaixe",
+    "includeStand": "Incluir base de apoio"
+  },
+  "templates": {
+    "nameWithScript": {
+      "name": "Nome com cursiva",
+      "description": "Inicial grande com o nome sobreposto em cursiva"
+    }
+  },
+  "actions": {
+    "reset": "Restaurar padrões",
+    "save": "Salvar design",
+    "download": "Baixar",
+    "language": "Idioma"
+  }
+}
