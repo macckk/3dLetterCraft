@@ -1,11 +1,12 @@
-import { BoxGeometry, Group, Mesh, MeshStandardMaterial } from 'three'
+import { BoxGeometry, Box3, Group, Mesh, MeshStandardMaterial, Vector3 } from 'three'
 import type { TemplateDefinition } from './types'
 import { TOLERANCE_DEFAULT, TOLERANCE_MAX, TOLERANCE_MIN, TOLERANCE_STEP } from '@/lib/tolerance'
+import { loadFont } from '@/lib/fonts/loader'
+import { extrudeText } from '@/lib/geometry/text'
 
-/**
- * Placeholder geometry — replaces the real text extrusion in the next iteration.
- * The plugin architecture and controls schema are the point of this file for now.
- */
+const BIG_LETTER_NAMES = new Set(['big-letter', 'stand'])
+const SCRIPT_NAMES = new Set(['script-text'])
+
 export const nameWithScriptTemplate: TemplateDefinition = {
   id: 'name-with-script',
   nameKey: 'templates.nameWithScript.name',
@@ -22,59 +23,83 @@ export const nameWithScriptTemplate: TemplateDefinition = {
     { kind: 'number', id: 'tolerance',      labelKey: 'controls.tolerance',      default: TOLERANCE_DEFAULT, min: TOLERANCE_MIN, max: TOLERANCE_MAX, step: TOLERANCE_STEP, unit: 'mm' },
     { kind: 'toggle', id: 'includeStand',   labelKey: 'controls.includeStand',   default: true },
   ],
-  build: ({ values }) => {
-    // Placeholder box representing the big letter, plus a slab for the base.
+
+  build: async ({ values }) => {
+    const name         = String(values.name ?? 'A').trim() || 'A'
+    const firstChar    = name.charAt(0).toUpperCase()
+    const bigFontName  = String(values.bigFont)
+    const scriptFont   = String(values.scriptFont)
+    const bigColor     = String(values.bigColor)
+    const scriptColor  = String(values.scriptColor)
+    const bigHeight    = Number(values.bigHeight)
+    const baseThk      = Number(values.baseThickness)
+    const scriptDepth  = Number(values.scriptDepth)
+    const includeStand = Boolean(values.includeStand)
+    // tolerance is stored for future pocket/inlay mode (currently script sits on front face)
+    void values.tolerance
+
+    const [bigFont, cursiveFont] = await Promise.all([
+      loadFont(bigFontName),
+      loadFont(scriptFont),
+    ])
+
+    const bigGeom = extrudeText(firstChar, bigFont, {
+      size: bigHeight,
+      depth: baseThk,
+    })
+    const scriptGeom = extrudeText(name, cursiveFont, {
+      size: bigHeight * 0.42,
+      depth: scriptDepth,
+    })
+
+    // Bounds after centering (both are centered on XY by extrudeText).
+    const bigBounds = new Box3().setFromBufferAttribute(bigGeom.attributes.position as never)
+    const scriptBounds = new Box3().setFromBufferAttribute(scriptGeom.attributes.position as never)
+    const bigSize = bigBounds.getSize(new Vector3())
+    const scriptSize = scriptBounds.getSize(new Vector3())
+
     const group = new Group()
     group.name = 'name-with-script'
 
-    const bigHeight = values.bigHeight as number
-    const baseThickness = values.baseThickness as number
-    const scriptDepth = values.scriptDepth as number
-    const includeStand = values.includeStand as boolean
-
-    // Big letter placeholder
-    const bigMat = new MeshStandardMaterial({ color: values.bigColor as string, roughness: 0.6 })
-    const bigMesh = new Mesh(
-      new BoxGeometry(bigHeight * 0.75, bigHeight, baseThickness),
-      bigMat
-    )
-    bigMesh.position.set(0, bigHeight / 2, 0)
+    // Big letter — bottom of extrusion at z = 0 already
+    const bigMesh = new Mesh(bigGeom, new MeshStandardMaterial({ color: bigColor, roughness: 0.55 }))
     bigMesh.name = 'big-letter'
     group.add(bigMesh)
 
-    // Script layer placeholder (a thin slab in front)
-    const scriptMat = new MeshStandardMaterial({ color: values.scriptColor as string, roughness: 0.5 })
-    const scriptMesh = new Mesh(
-      new BoxGeometry(bigHeight * 0.55, bigHeight * 0.25, scriptDepth),
-      scriptMat
-    )
-    scriptMesh.position.set(0, bigHeight * 0.45, baseThickness / 2 + scriptDepth / 2)
+    // Script sits on the FRONT face of the big letter (z = baseThk),
+    // slightly overlapping so the join looks solid in preview.
+    const scriptMesh = new Mesh(scriptGeom, new MeshStandardMaterial({ color: scriptColor, roughness: 0.45 }))
     scriptMesh.name = 'script-text'
+    scriptMesh.position.z = baseThk
     group.add(scriptMesh)
 
-    // Stand
+    // Stand: a slab under the letter so it can stand upright.
     if (includeStand) {
-      const standMat = new MeshStandardMaterial({ color: values.bigColor as string, roughness: 0.6 })
-      const standMesh = new Mesh(
-        new BoxGeometry(bigHeight, baseThickness * 1.3, baseThickness * 2.5),
-        standMat
+      const standWidth  = Math.max(bigSize.x, scriptSize.x) * 1.15
+      const standThk    = baseThk * 1.3
+      const standDepth  = baseThk * 2.6
+      const stand = new Mesh(
+        new BoxGeometry(standWidth, standThk, standDepth),
+        new MeshStandardMaterial({ color: bigColor, roughness: 0.55 })
       )
-      standMesh.position.set(0, -baseThickness * 0.65, 0)
-      standMesh.name = 'stand'
-      group.add(standMesh)
+      // Sit under the letter's bottom (Y-min)
+      stand.position.set(0, bigBounds.min.y - standThk / 2, standDepth / 2 - baseThk / 2)
+      stand.name = 'stand'
+      group.add(stand)
     }
 
     return group
   },
+
   getExportables: (group) => {
-    const bigParts: Group = new Group()
-    const scriptParts: Group = new Group()
+    const bigParts = new Group()
+    const scriptParts = new Group()
     group.traverse((obj) => {
-      if (obj.name === 'big-letter' || obj.name === 'stand') bigParts.add(obj.clone())
-      if (obj.name === 'script-text') scriptParts.add(obj.clone())
+      if (BIG_LETTER_NAMES.has(obj.name)) bigParts.add(obj.clone())
+      if (SCRIPT_NAMES.has(obj.name)) scriptParts.add(obj.clone())
     })
     return [
-      { label: 'big', color: '#F5F0E1', object: bigParts },
+      { label: 'big',    color: '#F5F0E1', object: bigParts },
       { label: 'script', color: '#D62828', object: scriptParts },
     ]
   },

@@ -15,16 +15,17 @@ export function TopBar() {
     trackEvent('lang_change', { to: next })
   }
 
-  function download() {
+  async function download() {
     const tpl = getTemplate(templateId)
     if (!tpl) return
-    const group = tpl.build({ values, t })
+    const group = await Promise.resolve(tpl.build({ values, t }))
+    const safeName = String(values.name ?? 'design').trim() || 'design'
     if (tpl.getExportables) {
-      for (const part of tpl.getExportables(group as never)) {
-        exportSTL(part.object, `${values.name ?? 'design'}-${part.label}.stl`)
+      for (const part of tpl.getExportables(group)) {
+        exportSTL(part.object, `${safeName}-${part.label}.stl`)
       }
     } else {
-      exportSTL(group as never, `${values.name ?? 'design'}.stl`)
+      exportSTL(group, `${safeName}.stl`)
     }
     trackEvent('download_stl', { templateId })
   }
