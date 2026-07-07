@@ -8,6 +8,7 @@ type DesignState = {
   values: ControlValues
   setTemplate: (id: string) => void
   setValue: (key: string, value: string | number | boolean) => void
+  applyPreset: (partial: Partial<ControlValues>) => void
   reset: () => void
 }
 
@@ -28,6 +29,14 @@ export const useDesignStore = create<DesignState>()(
       setTemplate: (id) => set({ templateId: id, values: defaultsFor(id) }),
       setValue: (key, value) =>
         set((s) => ({ values: { ...s.values, [key]: value } })),
+      applyPreset: (partial) =>
+        set((s) => {
+          const next: ControlValues = { ...s.values }
+          for (const [k, v] of Object.entries(partial)) {
+            if (v !== undefined) next[k] = v
+          }
+          return { values: next }
+        }),
       reset: () => set((s) => ({ values: defaultsFor(s.templateId) })),
     }),
     { name: 'lettercraft:design' }

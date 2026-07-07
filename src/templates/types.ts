@@ -31,12 +31,20 @@ export interface BuildContext {
   mode: BuildMode
 }
 
+export interface TemplatePreset {
+  id: string
+  nameKey: string
+  /** Partial values to overwrite; keys not listed are left as-is. */
+  values: Partial<ControlValues>
+}
+
 export interface TemplateDefinition {
   id: string
   nameKey: string  // i18n key, e.g. "templates.nameWithScript.name"
   descriptionKey: string
   thumbnail?: string
   controls: ControlType[]
+  presets?: TemplatePreset[]
   build: (ctx: BuildContext) => Promise<Group> | Group
   /**
    * Return one or more meshes labeled by color for exporting.

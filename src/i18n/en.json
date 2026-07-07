@@ -34,10 +34,18 @@
     "sans": "Sans-serif",
     "script": "Script"
   },
+  "presets": {
+    "label": "Quick styles"
+  },
   "templates": {
     "nameWithScript": {
       "name": "Name with script",
-      "description": "Large initial with the full name overlaid in cursive"
+      "description": "Large initial with the full name overlaid in cursive",
+      "presets": {
+        "classic": "Classic",
+        "romantic": "Romantic",
+        "modern": "Modern"
+      }
     }
   },
   "actions": {

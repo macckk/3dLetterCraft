@@ -34,10 +34,18 @@
     "sans": "Sem serifa",
     "script": "Cursiva"
   },
+  "presets": {
+    "label": "Estilos rápidos"
+  },
   "templates": {
     "nameWithScript": {
       "name": "Nome com cursiva",
-      "description": "Inicial grande com o nome sobreposto em cursiva"
+      "description": "Inicial grande com o nome sobreposto em cursiva",
+      "presets": {
+        "classic": "Clássico",
+        "romantic": "Romântico",
+        "modern": "Moderno"
+      }
     }
   },
   "actions": {

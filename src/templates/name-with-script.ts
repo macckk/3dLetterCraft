@@ -51,6 +51,39 @@ export const nameWithScriptTemplate: TemplateDefinition = {
     { kind: 'number', id: 'letterEmbed',       labelKey: 'controls.letterEmbed',       default: 3,   min: 0,  max: 15,  step: 0.5, unit: 'mm', visibleWhen: whenBase },
   ],
 
+  presets: [
+    {
+      id: 'classic',
+      nameKey: 'templates.nameWithScript.presets.classic',
+      values: {
+        bigFont: 'Cardo',        scriptFont: 'Sacramento',
+        bigColor: '#F5F0E1',     scriptColor: '#D62828',
+        bigHeight: 120,          letterThickness: 15,
+        scriptHeight: 50,        scriptInset: 2, scriptRelief: 1.5,
+      },
+    },
+    {
+      id: 'romantic',
+      nameKey: 'templates.nameWithScript.presets.romantic',
+      values: {
+        bigFont: 'EB Garamond',  scriptFont: 'Allura',
+        bigColor: '#F7E7E1',     scriptColor: '#B25668',
+        bigHeight: 130,          letterThickness: 14,
+        scriptHeight: 55,        scriptInset: 2, scriptRelief: 1.5,
+      },
+    },
+    {
+      id: 'modern',
+      nameKey: 'templates.nameWithScript.presets.modern',
+      values: {
+        bigFont: 'Bebas Neue',   scriptFont: 'Pacifico',
+        bigColor: '#111111',     scriptColor: '#E5B84B',
+        bigHeight: 140,          letterThickness: 18,
+        scriptHeight: 48,        scriptInset: 2.5, scriptRelief: 1.8,
+      },
+    },
+  ],
+
   build: async ({ values, mode }) => {
     const name           = String(values.name ?? 'A').trim() || 'A'
     const firstChar      = name.charAt(0).toUpperCase()

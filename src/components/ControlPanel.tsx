@@ -22,6 +22,7 @@ export function ControlPanel() {
   const templateId = useDesignStore((s) => s.templateId)
   const values = useDesignStore((s) => s.values)
   const setValue = useDesignStore((s) => s.setValue)
+  const applyPreset = useDesignStore((s) => s.applyPreset)
   const reset = useDesignStore((s) => s.reset)
 
   const tpl = getTemplate(templateId)
@@ -35,6 +36,25 @@ export function ControlPanel() {
         </div>
         <div className="text-sm text-neutral-500">{t(tpl.descriptionKey)}</div>
       </div>
+
+      {tpl.presets && tpl.presets.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <div className="text-xs uppercase tracking-wider text-neutral-500">
+            {t('presets.label')}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {tpl.presets.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => applyPreset(p.values)}
+                className="text-xs px-2.5 py-1 rounded-full border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 hover:border-indigo-500 text-neutral-200 transition-colors"
+              >
+                {t(p.nameKey)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col gap-3">
         {tpl.controls
