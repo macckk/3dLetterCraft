@@ -1,4 +1,7 @@
 import { BoxGeometry, Box3, Group, Mesh, MeshStandardMaterial, Vector3 } from 'three'
+
+// Small overlap between mating parts to avoid z-fighting on coplanar faces.
+const OVERLAP = 0.4
 import type { TemplateDefinition } from './types'
 import { TOLERANCE_DEFAULT, TOLERANCE_MAX, TOLERANCE_MIN, TOLERANCE_STEP } from '@/lib/tolerance'
 import { loadFont } from '@/lib/fonts/loader'
@@ -64,13 +67,16 @@ export const nameWithScriptTemplate: TemplateDefinition = {
     // Big letter — bottom of extrusion at z = 0 already
     const bigMesh = new Mesh(bigGeom, new MeshStandardMaterial({ color: bigColor, roughness: 0.55 }))
     bigMesh.name = 'big-letter'
+    bigMesh.castShadow = true
+    bigMesh.receiveShadow = true
     group.add(bigMesh)
 
-    // Script sits on the FRONT face of the big letter (z = baseThk),
-    // slightly overlapping so the join looks solid in preview.
+    // Script sits on the front face of the big letter, pushed slightly INTO
+    // the letter so the meshes overlap and don't z-fight along the front plane.
     const scriptMesh = new Mesh(scriptGeom, new MeshStandardMaterial({ color: scriptColor, roughness: 0.45 }))
     scriptMesh.name = 'script-text'
-    scriptMesh.position.z = baseThk
+    scriptMesh.position.z = baseThk - OVERLAP
+    scriptMesh.castShadow = true
     group.add(scriptMesh)
 
     // Stand: a slab under the letter so it can stand upright.
@@ -82,11 +88,23 @@ export const nameWithScriptTemplate: TemplateDefinition = {
         new BoxGeometry(standWidth, standThk, standDepth),
         new MeshStandardMaterial({ color: bigColor, roughness: 0.55 })
       )
-      // Sit under the letter's bottom (Y-min)
-      stand.position.set(0, bigBounds.min.y - standThk / 2, standDepth / 2 - baseThk / 2)
+      // Sit under the letter, overlapping slightly so top of stand isn't coplanar
+      // with bottom of the letter.
+      stand.position.set(
+        0,
+        bigBounds.min.y - standThk / 2 + OVERLAP,
+        standDepth / 2 - baseThk / 2
+      )
       stand.name = 'stand'
+      stand.castShadow = true
+      stand.receiveShadow = true
       group.add(stand)
     }
+
+    // Lift the whole assembly so its bottom sits on y = 0 — keeps it above
+    // the ground grid and avoids grid moiré on the base.
+    const overall = new Box3().setFromObject(group)
+    group.position.y = -overall.min.y
 
     return group
   },

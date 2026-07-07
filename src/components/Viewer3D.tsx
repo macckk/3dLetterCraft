@@ -49,16 +49,19 @@ export function Viewer3D() {
           <Environment preset="city" />
         </Suspense>
         <Grid
-          position={[0, -0.01, 0]}
-          args={[800, 800]}
-          cellColor="#2a2f3a"
-          sectionColor="#3a4152"
+          position={[0, -0.5, 0]}
+          args={[1200, 1200]}
+          cellColor="#232732"
+          sectionColor="#323848"
           sectionThickness={1}
           cellThickness={0.5}
-          fadeDistance={700}
+          cellSize={10}
+          sectionSize={100}
+          fadeDistance={900}
+          fadeStrength={2}
           infiniteGrid
         />
-        <OrbitControls makeDefault target={[0, 60, 0]} />
+        <OrbitControls makeDefault target={[0, 80, 0]} />
       </Canvas>
 
       {loading && (
