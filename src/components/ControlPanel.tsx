@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDesignStore } from '@/store/design'
 import { getTemplate } from '@/templates/registry'
@@ -74,24 +75,15 @@ function Control({
       )
     case 'number':
       return (
-        <label className="flex flex-col gap-1">
-          <div className="flex justify-between text-sm text-neutral-300">
-            <span>{label}</span>
-            <span className="text-neutral-400 tabular-nums">
-              {Number(value).toFixed(control.step < 1 ? 1 : 0)}
-              {control.unit ? ` ${control.unit}` : ''}
-            </span>
-          </div>
-          <input
-            type="range"
-            min={control.min}
-            max={control.max}
-            step={control.step}
-            value={Number(value)}
-            onChange={(e) => onChange(Number(e.target.value))}
-            className="accent-indigo-500"
-          />
-        </label>
+        <NumberControl
+          label={label}
+          min={control.min}
+          max={control.max}
+          step={control.step}
+          unit={control.unit}
+          value={Number(value)}
+          onChange={(n) => onChange(n)}
+        />
       )
     case 'color':
       return (
@@ -135,4 +127,84 @@ function Control({
         </label>
       )
   }
+}
+
+function NumberControl({
+  label,
+  min,
+  max,
+  step,
+  unit,
+  value,
+  onChange,
+}: {
+  label: string
+  min: number
+  max: number
+  step: number
+  unit?: string
+  value: number
+  onChange: (n: number) => void
+}) {
+  // Local text state so typing doesn't fight controlled updates.
+  // Committed to parent on blur / Enter.
+  const [text, setText] = useState(String(value))
+
+  useEffect(() => {
+    setText(formatValue(value, step))
+  }, [value, step])
+
+  function commit() {
+    const n = Number(text)
+    if (!Number.isFinite(n)) {
+      setText(formatValue(value, step))
+      return
+    }
+    const clamped = Math.min(Math.max(n, min), max)
+    onChange(clamped)
+    setText(formatValue(clamped, step))
+  }
+
+  return (
+    <label className="flex flex-col gap-1">
+      <div className="flex justify-between items-center text-sm">
+        <span className="text-neutral-300">{label}</span>
+        <div className="flex items-center gap-1">
+          <input
+            type="number"
+            inputMode="decimal"
+            min={min}
+            max={max}
+            step={step}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                commit()
+                ;(e.target as HTMLInputElement).blur()
+              }
+            }}
+            className="w-16 bg-neutral-800 border border-neutral-700 rounded px-1.5 py-0.5 text-xs text-right tabular-nums text-neutral-100 focus:outline-none focus:border-indigo-500"
+          />
+          {unit && <span className="text-neutral-400 text-xs w-4">{unit}</span>}
+        </div>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="accent-indigo-500"
+      />
+    </label>
+  )
+}
+
+function formatValue(n: number, step: number): string {
+  const decimals = step < 1 ? Math.max(1, -Math.floor(Math.log10(step))) : 0
+  return n.toFixed(decimals)
 }
