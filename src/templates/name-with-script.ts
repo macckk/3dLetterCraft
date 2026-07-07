@@ -1,11 +1,12 @@
-import { BoxGeometry, Box3, Group, Mesh, MeshStandardMaterial, Vector3 } from 'three'
-
-// Small overlap between mating parts to avoid z-fighting on coplanar faces.
-const OVERLAP = 0.4
+import { BoxGeometry, Box3, Group, Matrix4, Mesh, MeshStandardMaterial, Vector3 } from 'three'
 import type { TemplateDefinition } from './types'
 import { TOLERANCE_DEFAULT, TOLERANCE_MAX, TOLERANCE_MIN, TOLERANCE_STEP } from '@/lib/tolerance'
 import { loadFont } from '@/lib/fonts/loader'
 import { extrudeText } from '@/lib/geometry/text'
+import { subtract } from '@/lib/geometry/csg'
+
+const OVERLAP = 0.4  // small overlap for coplanar-face z-fight avoidance
+const CUTTER_OVERSHOOT = 1.0  // cutter sticks out past letter's front face to guarantee a clean cut
 
 const BIG_LETTER_NAMES = new Set(['big-letter', 'stand'])
 const SCRIPT_NAMES = new Set(['script-text'])
@@ -31,69 +32,90 @@ export const nameWithScriptTemplate: TemplateDefinition = {
     const name         = String(values.name ?? 'A').trim() || 'A'
     const firstChar    = name.charAt(0).toUpperCase()
     const bigFontName  = String(values.bigFont)
-    const scriptFont   = String(values.scriptFont)
+    const scriptFontName = String(values.scriptFont)
     const bigColor     = String(values.bigColor)
     const scriptColor  = String(values.scriptColor)
     const bigHeight    = Number(values.bigHeight)
     const baseThk      = Number(values.baseThickness)
     const scriptDepth  = Number(values.scriptDepth)
+    const tolerance    = Number(values.tolerance)
     const includeStand = Boolean(values.includeStand)
-    // tolerance is stored for future pocket/inlay mode (currently script sits on front face)
-    void values.tolerance
 
     const [bigFont, cursiveFont] = await Promise.all([
       loadFont(bigFontName),
-      loadFont(scriptFont),
+      loadFont(scriptFontName),
     ])
 
-    const bigGeom = extrudeText(firstChar, bigFont, {
-      size: bigHeight,
-      depth: baseThk,
-    })
-    const scriptGeom = extrudeText(name, cursiveFont, {
-      size: bigHeight * 0.42,
-      depth: scriptDepth,
-    })
+    const scriptSize = bigHeight * 0.42
 
-    // Bounds after centering (both are centered on XY by extrudeText).
-    const bigBounds = new Box3().setFromBufferAttribute(bigGeom.attributes.position as never)
+    // Big letter (extruded z: 0 → baseThk)
+    const bigGeom = extrudeText(firstChar, bigFont, { size: bigHeight, depth: baseThk })
+
+    // Script insert (natural size)
+    const scriptGeom = extrudeText(name, cursiveFont, { size: scriptSize, depth: scriptDepth })
+
+    // Cutter for the pocket = script silhouette scaled outward by ~tolerance,
+    // deeper than scriptDepth so it pokes through the letter's front face.
+    // NOTE: xy scale is an approximation of a true polygon offset — it's uniform
+    // per-vertex-radius from center, close enough for typical print tolerances.
+    const cutterGeom = extrudeText(name, cursiveFont, {
+      size: scriptSize,
+      depth: scriptDepth + CUTTER_OVERSHOOT,
+    })
+    if (tolerance > 0) {
+      const scriptBounds = new Box3().setFromBufferAttribute(cutterGeom.attributes.position as never)
+      const cutterSize = scriptBounds.getSize(new Vector3())
+      const avgHalfExtent = (cutterSize.x + cutterSize.y) / 4
+      const scaleXY = 1 + tolerance / Math.max(avgHalfExtent, 1)
+      cutterGeom.scale(scaleXY, scaleXY, 1)
+    }
+
+    // Subtract the cutter from the big letter to create the pocket.
+    // Cutter positioned so its bottom is at z = baseThk − scriptDepth (pocket floor)
+    // and its top pokes past baseThk. XY origin matches letter center.
+    const cutterMatrix = new Matrix4().makeTranslation(0, 0, baseThk - scriptDepth)
+    const bigWithPocket = subtract(bigGeom, cutterGeom, cutterMatrix)
+    bigGeom.dispose()
+    cutterGeom.dispose()
+
+    // Bounds for placement/sizing
+    const bigBounds = new Box3().setFromBufferAttribute(bigWithPocket.attributes.position as never)
     const scriptBounds = new Box3().setFromBufferAttribute(scriptGeom.attributes.position as never)
     const bigSize = bigBounds.getSize(new Vector3())
-    const scriptSize = scriptBounds.getSize(new Vector3())
+    const scriptSizeVec = scriptBounds.getSize(new Vector3())
 
     const group = new Group()
     group.name = 'name-with-script'
 
-    // Big letter — bottom of extrusion at z = 0 already
-    const bigMesh = new Mesh(bigGeom, new MeshStandardMaterial({ color: bigColor, roughness: 0.55 }))
+    // Big letter with pocket
+    const bigMesh = new Mesh(bigWithPocket, new MeshStandardMaterial({ color: bigColor, roughness: 0.55 }))
     bigMesh.name = 'big-letter'
     bigMesh.castShadow = true
     bigMesh.receiveShadow = true
     group.add(bigMesh)
 
-    // Script sits on the front face of the big letter, pushed slightly INTO
-    // the letter so the meshes overlap and don't z-fight along the front plane.
+    // Script insert seated in the pocket. Bottom at pocket floor (z = baseThk − scriptDepth),
+    // top flush with letter's front face (z = baseThk).
     const scriptMesh = new Mesh(scriptGeom, new MeshStandardMaterial({ color: scriptColor, roughness: 0.45 }))
     scriptMesh.name = 'script-text'
-    scriptMesh.position.z = baseThk - OVERLAP
+    scriptMesh.position.z = baseThk - scriptDepth
     scriptMesh.castShadow = true
     group.add(scriptMesh)
 
-    // Stand: a slab under the letter so it can stand upright.
+    // Stand — back face aligned with letter's back face (both at z = 0),
+    // extending FORWARD (+Z) only. Sits under letter (Y-min).
     if (includeStand) {
-      const standWidth  = Math.max(bigSize.x, scriptSize.x) * 1.15
+      const standWidth  = Math.max(bigSize.x, scriptSizeVec.x) * 1.15
       const standThk    = baseThk * 1.3
       const standDepth  = baseThk * 2.6
       const stand = new Mesh(
         new BoxGeometry(standWidth, standThk, standDepth),
         new MeshStandardMaterial({ color: bigColor, roughness: 0.55 })
       )
-      // Sit under the letter, overlapping slightly so top of stand isn't coplanar
-      // with bottom of the letter.
       stand.position.set(
         0,
         bigBounds.min.y - standThk / 2 + OVERLAP,
-        standDepth / 2 - baseThk / 2
+        standDepth / 2  // back at z = 0, front at z = standDepth
       )
       stand.name = 'stand'
       stand.castShadow = true
@@ -101,8 +123,7 @@ export const nameWithScriptTemplate: TemplateDefinition = {
       group.add(stand)
     }
 
-    // Lift the whole assembly so its bottom sits on y = 0 — keeps it above
-    // the ground grid and avoids grid moiré on the base.
+    // Lift the whole assembly so its bottom sits on y = 0.
     const overall = new Box3().setFromObject(group)
     group.position.y = -overall.min.y
 
