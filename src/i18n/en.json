@@ -28,6 +28,11 @@
     "baseDepth": "Base depth (Z)",
     "baseCornerRadius": "Base corner radius"
   },
+  "fontGroups": {
+    "serif": "Serif",
+    "sans": "Sans-serif",
+    "script": "Script"
+  },
   "templates": {
     "nameWithScript": {
       "name": "Name with script",

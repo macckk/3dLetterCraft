@@ -28,6 +28,11 @@
     "baseDepth": "Profundidade da base (Z)",
     "baseCornerRadius": "Raio dos cantos da base"
   },
+  "fontGroups": {
+    "serif": "Com serifa",
+    "sans": "Sem serifa",
+    "script": "Cursiva"
+  },
   "templates": {
     "nameWithScript": {
       "name": "Nome com cursiva",

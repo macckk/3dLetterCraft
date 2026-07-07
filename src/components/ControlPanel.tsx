@@ -4,10 +4,17 @@ import { useDesignStore } from '@/store/design'
 import { getTemplate } from '@/templates/registry'
 import type { ControlType } from '@/templates/types'
 
-const AVAILABLE_FONTS = {
-  serif:  ['Cardo'],
-  script: ['Sacramento'],
-  sans:   [],
+type FontGroup = { labelKey: string; fonts: string[] }
+
+const SERIF_GROUP:  FontGroup = { labelKey: 'fontGroups.serif',  fonts: ['Cardo', 'EB Garamond', 'PT Serif', 'Alegreya', 'Bitter'] }
+const SANS_GROUP:   FontGroup = { labelKey: 'fontGroups.sans',   fonts: ['Open Sans', 'Montserrat', 'Poppins', 'PT Sans', 'Bebas Neue'] }
+const SCRIPT_GROUP: FontGroup = { labelKey: 'fontGroups.script', fonts: ['Sacramento', 'Dancing Script', 'Pacifico', 'Kaushan Script', 'Allura'] }
+
+const FONT_GROUPS: Record<'block' | 'serif' | 'script' | 'sans', FontGroup[]> = {
+  block:  [SERIF_GROUP, SANS_GROUP],
+  serif:  [SERIF_GROUP],
+  sans:   [SANS_GROUP],
+  script: [SCRIPT_GROUP],
 }
 
 export function ControlPanel() {
@@ -98,7 +105,7 @@ function Control({
         </label>
       )
     case 'font': {
-      const list = AVAILABLE_FONTS[control.category ?? 'serif']
+      const groups = FONT_GROUPS[control.category ?? 'block']
       return (
         <label className="flex flex-col gap-1">
           <span className="text-sm text-neutral-300">{label}</span>
@@ -107,8 +114,12 @@ function Control({
             onChange={(e) => onChange(e.target.value)}
             className="bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-sm"
           >
-            {list.map((f) => (
-              <option key={f} value={f}>{f}</option>
+            {groups.map((g) => (
+              <optgroup key={g.labelKey} label={t(g.labelKey)}>
+                {g.fonts.map((f) => (
+                  <option key={f} value={f}>{f}</option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </label>

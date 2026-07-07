@@ -15,7 +15,7 @@ export type ControlType = BaseControl & (
   | { kind: 'text'; id: string; labelKey: string; default: string; maxLength?: number }
   | { kind: 'number'; id: string; labelKey: string; default: number; min: number; max: number; step: number; unit?: string }
   | { kind: 'color'; id: string; labelKey: string; default: string }
-  | { kind: 'font'; id: string; labelKey: string; default: string; category?: 'serif' | 'script' | 'sans' }
+  | { kind: 'font'; id: string; labelKey: string; default: string; category?: 'block' | 'serif' | 'script' | 'sans' }
   | { kind: 'toggle'; id: string; labelKey: string; default: boolean }
 )
 

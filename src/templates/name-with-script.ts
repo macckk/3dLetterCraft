@@ -26,7 +26,7 @@ export const nameWithScriptTemplate: TemplateDefinition = {
   descriptionKey: 'templates.nameWithScript.description',
   controls: [
     { kind: 'text',   id: 'name',            labelKey: 'controls.name',            default: 'Marcelo', maxLength: 24 },
-    { kind: 'font',   id: 'bigFont',         labelKey: 'controls.bigFont',         default: 'Cardo',      category: 'serif' },
+    { kind: 'font',   id: 'bigFont',         labelKey: 'controls.bigFont',         default: 'Cardo',      category: 'block' },
     { kind: 'font',   id: 'scriptFont',      labelKey: 'controls.scriptFont',      default: 'Sacramento', category: 'script' },
     { kind: 'color',  id: 'bigColor',        labelKey: 'controls.bigColor',        default: '#F5F0E1' },
     { kind: 'color',  id: 'scriptColor',     labelKey: 'controls.scriptColor',     default: '#D62828' },

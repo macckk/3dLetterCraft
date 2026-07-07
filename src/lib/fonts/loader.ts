@@ -3,8 +3,24 @@ import { Font } from 'three/examples/jsm/loaders/FontLoader.js'
 
 // Filename in /public/fonts/ per display name.
 export const FONT_FILES: Record<string, string> = {
-  'Cardo':      'Cardo.ttf',
-  'Sacramento': 'Sacramento.ttf',
+  // Serif
+  'Cardo':         'Cardo.ttf',
+  'EB Garamond':   'EBGaramond.ttf',
+  'PT Serif':      'PTSerif.ttf',
+  'Alegreya':      'Alegreya.ttf',
+  'Bitter':        'Bitter.ttf',
+  // Sans
+  'Open Sans':     'OpenSans.ttf',
+  'Montserrat':    'Montserrat.ttf',
+  'Poppins':       'Poppins.ttf',
+  'PT Sans':       'PTSans.ttf',
+  'Bebas Neue':    'BebasNeue.ttf',
+  // Script
+  'Sacramento':    'Sacramento.ttf',
+  'Dancing Script':'DancingScript.ttf',
+  'Pacifico':      'Pacifico.ttf',
+  'Kaushan Script':'KaushanScript.ttf',
+  'Allura':        'Allura.ttf',
 }
 
 const cache = new Map<string, Promise<Font>>()
