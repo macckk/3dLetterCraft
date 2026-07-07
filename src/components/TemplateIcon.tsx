@@ -8,6 +8,7 @@ export function TemplateIcon({ id }: { id: string }) {
     case 'couple-initials':   return <CoupleInitialsIcon />
     case 'heart-with-name':   return <HeartWithNameIcon />
     case 'cake-topper':       return <CakeTopperIcon />
+    case 'name-keychain':     return <NameKeychainIcon />
     default:                  return <FallbackIcon />
   }
 }
@@ -77,6 +78,35 @@ function CakeTopperIcon() {
       <rect x={62} y={75} width={4} height={45} fill="#E5B84B" />
       <rect x={134} y={75} width={4} height={45} fill="#E5B84B" />
       <path d="M 30 130 Q 100 110 170 130" stroke="#5a2a2a" strokeWidth={3} fill="none" opacity={0.5} />
+    </svg>
+  )
+}
+
+function NameKeychainIcon() {
+  // Rounded red plate with a circular lobe/hole on the left + white "Name" text.
+  return (
+    <svg viewBox={VIEW} className="w-full h-full">
+      {/* Lobe circle (behind plate) */}
+      <circle cx={42} cy={75} r={24} fill="#D62828" />
+      {/* Main plate body */}
+      <rect x={54} y={51} width={130} height={48} rx={10} fill="#D62828" />
+      {/* Keyring hole */}
+      <circle cx={42} cy={75} r={8} fill="#111" />
+      {/* Name text (raised, white with subtle outline) */}
+      <text
+        x={122}
+        y={86}
+        textAnchor="middle"
+        fontFamily="'Poppins', 'Helvetica', sans-serif"
+        fontSize={30}
+        fontWeight={700}
+        fill="#F5F0E1"
+        stroke="#111"
+        strokeWidth={1}
+        paintOrder="stroke"
+      >
+        Name
+      </text>
     </svg>
   )
 }

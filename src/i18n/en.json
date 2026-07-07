@@ -50,6 +50,17 @@
     "includeHole": "Hanging hole",
     "holeDiameter": "Hole diameter",
     "holeMargin": "Top-edge margin to hole",
+    "holeXOffset": "Hole horizontal offset",
+    "textColor": "Text color",
+    "plateColor": "Plate color",
+    "textThickness": "Text thickness (relief)",
+    "plateThickness": "Plate thickness",
+    "platePadX": "Plate horizontal padding",
+    "platePadY": "Plate vertical padding",
+    "plateCornerR": "Plate corner radius",
+    "holeWall": "Wall around hole",
+    "holeOnRight": "Hole on right side",
+    "textEmbed": "Text embed into plate",
     "text": "Text",
     "color": "Color",
     "textHeight": "Text height",
@@ -117,6 +128,15 @@
         "gold": "Gold",
         "rose": "Rose",
         "black": "Black"
+      }
+    },
+    "nameKeychain": {
+      "name": "Name keychain",
+      "description": "Raised name on a rounded plate with a keyring hole",
+      "presets": {
+        "red": "Red",
+        "black": "Black",
+        "green": "Green"
       }
     }
   },

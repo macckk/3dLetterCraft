@@ -50,6 +50,17 @@
     "includeHole": "Furo para pendurar",
     "holeDiameter": "Diâmetro do furo",
     "holeMargin": "Margem do topo até o furo",
+    "holeXOffset": "Deslocamento horizontal do furo",
+    "textColor": "Cor do texto",
+    "plateColor": "Cor da plaquinha",
+    "textThickness": "Espessura do texto (relevo)",
+    "plateThickness": "Espessura da plaquinha",
+    "platePadX": "Folga horizontal da plaquinha",
+    "platePadY": "Folga vertical da plaquinha",
+    "plateCornerR": "Raio dos cantos da plaquinha",
+    "holeWall": "Parede em volta do furo",
+    "holeOnRight": "Furo do lado direito",
+    "textEmbed": "Encaixe do texto na plaquinha",
     "text": "Texto",
     "color": "Cor",
     "textHeight": "Altura do texto",
@@ -117,6 +128,15 @@
         "gold": "Dourado",
         "rose": "Rosé",
         "black": "Preto"
+      }
+    },
+    "nameKeychain": {
+      "name": "Chaveiro com nome",
+      "description": "Nome em relevo sobre plaquinha arredondada com furo para argola",
+      "presets": {
+        "red": "Vermelho",
+        "black": "Preto",
+        "green": "Verde"
       }
     }
   },

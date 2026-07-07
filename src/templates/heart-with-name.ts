@@ -35,6 +35,7 @@ export const heartWithNameTemplate: TemplateDefinition = {
     { kind: 'toggle', id: 'includeHole',   labelKey: 'controls.includeHole',   default: true },
     { kind: 'number', id: 'holeDiameter',  labelKey: 'controls.holeDiameter',  default: 5, min: 2,  max: 15, step: 0.5, unit: 'mm', visibleWhen: whenHole },
     { kind: 'number', id: 'holeMargin',    labelKey: 'controls.holeMargin',    default: 6, min: 2,  max: 30, step: 0.5, unit: 'mm', visibleWhen: whenHole },
+    { kind: 'number', id: 'holeXOffset',   labelKey: 'controls.holeXOffset',   default: 0, min: -30, max: 30, step: 0.5, unit: 'mm', visibleWhen: whenHole },
   ],
 
   presets: [
@@ -83,6 +84,7 @@ export const heartWithNameTemplate: TemplateDefinition = {
     const includeHole  = Boolean(values.includeHole)
     const holeDiameter = Number(values.holeDiameter)
     const holeMargin   = Number(values.holeMargin)
+    const holeXOffset  = Number(values.holeXOffset ?? 0)
 
     const scriptFont = await loadFont(scriptFontName)
 
@@ -92,7 +94,7 @@ export const heartWithNameTemplate: TemplateDefinition = {
       // Sit the hole safely below it so the whole hole is inside the material.
       const dipY = heartDipY(heartSize)
       const hy = dipY - holeMargin - holeDiameter / 2
-      holeSpec = { x: 0, y: hy, radius: holeDiameter / 2 }
+      holeSpec = { x: holeXOffset, y: hy, radius: holeDiameter / 2 }
     }
 
     let heartGeom: BufferGeometry = heartPlateGeometry(heartSize, heartThk, holeSpec, CURVE_SEGMENTS_VISIBLE)
