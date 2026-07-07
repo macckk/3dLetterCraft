@@ -33,7 +33,15 @@
     "baseHeight": "Altura da base (Y)",
     "baseDepth": "Profundidade da base (Z)",
     "baseCornerRadius": "Raio dos cantos da base",
-    "letterEmbed": "Encaixe da letra na base"
+    "letterEmbed": "Encaixe da letra na base",
+    "initial1": "Inicial 1",
+    "initial2": "Inicial 2",
+    "separator": "Separador",
+    "font": "Fonte",
+    "letterColor": "Cor das letras",
+    "separatorColor": "Cor do separador",
+    "letterHeight": "Altura das letras",
+    "gap": "Espaço entre letras"
   },
   "fontGroups": {
     "serif": "Com serifa",
@@ -57,6 +65,15 @@
     "nameWithScript": {
       "name": "Nome com cursiva",
       "description": "Inicial grande com o nome sobreposto em cursiva",
+      "presets": {
+        "classic": "Clássico",
+        "romantic": "Romântico",
+        "modern": "Moderno"
+      }
+    },
+    "coupleInitials": {
+      "name": "Iniciais de casal",
+      "description": "Duas iniciais com um separador entre elas, sobre uma base",
       "presets": {
         "classic": "Clássico",
         "romantic": "Romântico",
