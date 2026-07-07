@@ -1,4 +1,5 @@
 import { BoxGeometry, Box3, Group, Matrix4, Mesh, MeshStandardMaterial, Vector3 } from 'three'
+import type { BufferGeometry } from 'three'
 import type { TemplateDefinition } from './types'
 import { TOLERANCE_DEFAULT, TOLERANCE_MAX, TOLERANCE_MIN, TOLERANCE_STEP } from '@/lib/tolerance'
 import { loadFont } from '@/lib/fonts/loader'
@@ -28,7 +29,7 @@ export const nameWithScriptTemplate: TemplateDefinition = {
     { kind: 'toggle', id: 'includeStand',   labelKey: 'controls.includeStand',   default: true },
   ],
 
-  build: async ({ values }) => {
+  build: async ({ values, mode }) => {
     const name         = String(values.name ?? 'A').trim() || 'A'
     const firstChar    = name.charAt(0).toUpperCase()
     const bigFontName  = String(values.bigFont)
@@ -54,29 +55,28 @@ export const nameWithScriptTemplate: TemplateDefinition = {
     // Script insert (natural size)
     const scriptGeom = extrudeText(name, cursiveFont, { size: scriptSize, depth: scriptDepth })
 
-    // Cutter for the pocket = script silhouette scaled outward by ~tolerance,
-    // deeper than scriptDepth so it pokes through the letter's front face.
-    // NOTE: xy scale is an approximation of a true polygon offset — it's uniform
-    // per-vertex-radius from center, close enough for typical print tolerances.
-    const cutterGeom = extrudeText(name, cursiveFont, {
-      size: scriptSize,
-      depth: scriptDepth + CUTTER_OVERSHOOT,
-    })
-    if (tolerance > 0) {
-      const scriptBounds = new Box3().setFromBufferAttribute(cutterGeom.attributes.position as never)
-      const cutterSize = scriptBounds.getSize(new Vector3())
-      const avgHalfExtent = (cutterSize.x + cutterSize.y) / 4
-      const scaleXY = 1 + tolerance / Math.max(avgHalfExtent, 1)
-      cutterGeom.scale(scaleXY, scaleXY, 1)
+    // CSG (pocket) only in export mode — it's expensive and would freeze the UI
+    // on every slider change. In preview we stack the script on the front face
+    // (see script positioning below) so the user still sees the visual composition.
+    let bigWithPocket: BufferGeometry = bigGeom
+    if (mode === 'export') {
+      const cutterGeom = extrudeText(name, cursiveFont, {
+        size: scriptSize,
+        depth: scriptDepth + CUTTER_OVERSHOOT,
+        curveSegments: 4,
+      })
+      if (tolerance > 0) {
+        const cutterBounds = new Box3().setFromBufferAttribute(cutterGeom.attributes.position as never)
+        const cutterSize = cutterBounds.getSize(new Vector3())
+        const avgHalfExtent = (cutterSize.x + cutterSize.y) / 4
+        const scaleXY = 1 + tolerance / Math.max(avgHalfExtent, 1)
+        cutterGeom.scale(scaleXY, scaleXY, 1)
+      }
+      const cutterMatrix = new Matrix4().makeTranslation(0, 0, baseThk - scriptDepth)
+      bigWithPocket = subtract(bigGeom, cutterGeom, cutterMatrix)
+      bigGeom.dispose()
+      cutterGeom.dispose()
     }
-
-    // Subtract the cutter from the big letter to create the pocket.
-    // Cutter positioned so its bottom is at z = baseThk − scriptDepth (pocket floor)
-    // and its top pokes past baseThk. XY origin matches letter center.
-    const cutterMatrix = new Matrix4().makeTranslation(0, 0, baseThk - scriptDepth)
-    const bigWithPocket = subtract(bigGeom, cutterGeom, cutterMatrix)
-    bigGeom.dispose()
-    cutterGeom.dispose()
 
     // Bounds for placement/sizing
     const bigBounds = new Box3().setFromBufferAttribute(bigWithPocket.attributes.position as never)
@@ -94,11 +94,13 @@ export const nameWithScriptTemplate: TemplateDefinition = {
     bigMesh.receiveShadow = true
     group.add(bigMesh)
 
-    // Script insert seated in the pocket. Bottom at pocket floor (z = baseThk − scriptDepth),
-    // top flush with letter's front face (z = baseThk).
+    // Script placement:
+    //   • export: seated in the CSG pocket, flush with front face.
+    //   • preview: stacked slightly into the front face for a solid look
+    //     (no CSG, so no real pocket).
     const scriptMesh = new Mesh(scriptGeom, new MeshStandardMaterial({ color: scriptColor, roughness: 0.45 }))
     scriptMesh.name = 'script-text'
-    scriptMesh.position.z = baseThk - scriptDepth
+    scriptMesh.position.z = mode === 'export' ? baseThk - scriptDepth : baseThk - OVERLAP
     scriptMesh.castShadow = true
     group.add(scriptMesh)
 

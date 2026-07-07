@@ -21,11 +21,17 @@ export function Viewer3D() {
     let cancelled = false
     setLoading(true)
     setError(null)
-    Promise.resolve(tpl.build({ values, t }))
-      .then((g) => { if (!cancelled) setGroup(g) })
-      .catch((err) => { if (!cancelled) setError(String(err?.message ?? err)) })
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
+    // Debounce so dragging sliders doesn't spam rebuilds.
+    const timer = window.setTimeout(() => {
+      Promise.resolve(tpl.build({ values, t, mode: 'preview' }))
+        .then((g) => { if (!cancelled) setGroup(g) })
+        .catch((err) => { if (!cancelled) setError(String(err?.message ?? err)) })
+        .finally(() => { if (!cancelled) setLoading(false) })
+    }, 180)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
   }, [templateId, values, t])
 
   return (

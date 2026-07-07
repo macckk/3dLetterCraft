@@ -10,9 +10,16 @@ export type ControlType =
 
 export type ControlValues = Record<string, string | number | boolean>
 
+export type BuildMode = 'preview' | 'export'
+
 export interface BuildContext {
   values: ControlValues
   t: TFunction
+  /**
+   * 'preview' — fast, may skip expensive CSG (used in the 3D viewer).
+   * 'export' — accurate geometry ready for STL/3MF output.
+   */
+  mode: BuildMode
 }
 
 export interface TemplateDefinition {

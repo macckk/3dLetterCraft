@@ -18,7 +18,7 @@ export function TopBar() {
   async function download() {
     const tpl = getTemplate(templateId)
     if (!tpl) return
-    const group = await Promise.resolve(tpl.build({ values, t }))
+    const group = await Promise.resolve(tpl.build({ values, t, mode: 'export' }))
     const safeName = String(values.name ?? 'design').trim() || 'design'
     if (tpl.getExportables) {
       for (const part of tpl.getExportables(group)) {
