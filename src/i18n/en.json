@@ -41,7 +41,13 @@
     "letterColor": "Letters color",
     "separatorColor": "Separator color",
     "letterHeight": "Letters height",
-    "gap": "Gap between letters"
+    "gap": "Gap between letters",
+    "heartColor": "Heart color",
+    "heartSize": "Heart size",
+    "heartThickness": "Heart thickness",
+    "includeHole": "Hanging hole",
+    "holeDiameter": "Hole diameter",
+    "holeMargin": "Top-edge margin to hole"
   },
   "fontGroups": {
     "serif": "Serif",
@@ -78,6 +84,15 @@
         "classic": "Classic",
         "romantic": "Romantic",
         "modern": "Modern"
+      }
+    },
+    "heartWithName": {
+      "name": "Heart with name",
+      "description": "Hangable heart with a cursive name on the front",
+      "presets": {
+        "red": "Red",
+        "pastel": "Pastel",
+        "gold": "Gold"
       }
     }
   },

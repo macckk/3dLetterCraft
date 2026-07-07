@@ -41,7 +41,13 @@
     "letterColor": "Cor das letras",
     "separatorColor": "Cor do separador",
     "letterHeight": "Altura das letras",
-    "gap": "Espaço entre letras"
+    "gap": "Espaço entre letras",
+    "heartColor": "Cor do coração",
+    "heartSize": "Tamanho do coração",
+    "heartThickness": "Espessura do coração",
+    "includeHole": "Furo para pendurar",
+    "holeDiameter": "Diâmetro do furo",
+    "holeMargin": "Margem do topo até o furo"
   },
   "fontGroups": {
     "serif": "Com serifa",
@@ -78,6 +84,15 @@
         "classic": "Clássico",
         "romantic": "Romântico",
         "modern": "Moderno"
+      }
+    },
+    "heartWithName": {
+      "name": "Coração com nome",
+      "description": "Coração para pendurar com um nome em cursiva na frente",
+      "presets": {
+        "red": "Vermelho",
+        "pastel": "Pastel",
+        "gold": "Dourado"
       }
     }
   },
