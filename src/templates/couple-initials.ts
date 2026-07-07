@@ -18,6 +18,10 @@ function xExtent(geom: BufferGeometry): number {
   return bb.max.x - bb.min.x
 }
 
+function bounds(geom: BufferGeometry): Box3 {
+  return new Box3().setFromBufferAttribute(geom.attributes.position as never)
+}
+
 export const coupleInitialsTemplate: TemplateDefinition = {
   id: 'couple-initials',
   nameKey: 'templates.coupleInitials.name',
@@ -29,11 +33,14 @@ export const coupleInitialsTemplate: TemplateDefinition = {
     { kind: 'font',  id: 'font',          labelKey: 'controls.font',      default: 'Cardo', category: 'block' },
     { kind: 'color', id: 'letterColor',   labelKey: 'controls.letterColor',    default: '#F5F0E1' },
     { kind: 'color', id: 'separatorColor',labelKey: 'controls.separatorColor', default: '#D62828' },
+    { kind: 'color', id: 'baseColor',     labelKey: 'controls.baseColor',      default: '#8C6A45' },
 
     { kind: 'number', id: 'letterHeight',    labelKey: 'controls.letterHeight',    default: 100, min: 40, max: 250, step: 5,   unit: 'mm' },
     { kind: 'number', id: 'letterThickness', labelKey: 'controls.letterThickness', default: 15,  min: 6,  max: 40,  step: 1,   unit: 'mm' },
     { kind: 'number', id: 'gap',             labelKey: 'controls.gap',             default: 10,  min: 0,  max: 60,  step: 1,   unit: 'mm' },
     { kind: 'number', id: 'tolerance',       labelKey: 'controls.tolerance',       default: TOLERANCE_DEFAULT, min: TOLERANCE_MIN, max: TOLERANCE_MAX, step: TOLERANCE_STEP, unit: 'mm' },
+
+    { kind: 'toggle', id: 'separateParts',   labelKey: 'controls.separateParts',   default: true },
 
     { kind: 'toggle', id: 'includeStand',      labelKey: 'controls.includeStand',      default: true },
     { kind: 'number', id: 'baseWidth',         labelKey: 'controls.baseWidth',         default: 180, min: 60, max: 400, step: 5,   unit: 'mm', visibleWhen: whenBase },
@@ -47,17 +54,17 @@ export const coupleInitialsTemplate: TemplateDefinition = {
     {
       id: 'classic',
       nameKey: 'templates.coupleInitials.presets.classic',
-      values: { font: 'Cardo', letterColor: '#F5F0E1', separatorColor: '#D62828', separator: '&' },
+      values: { font: 'Cardo', letterColor: '#F5F0E1', separatorColor: '#D62828', baseColor: '#8C6A45', separator: '&' },
     },
     {
       id: 'romantic',
       nameKey: 'templates.coupleInitials.presets.romantic',
-      values: { font: 'EB Garamond', letterColor: '#F7E7E1', separatorColor: '#B25668', separator: '&' },
+      values: { font: 'EB Garamond', letterColor: '#F7E7E1', separatorColor: '#B25668', baseColor: '#8C6A45', separator: '&' },
     },
     {
       id: 'modern',
       nameKey: 'templates.coupleInitials.presets.modern',
-      values: { font: 'Bebas Neue', letterColor: '#111111', separatorColor: '#E5B84B', separator: '+' },
+      values: { font: 'Bebas Neue', letterColor: '#111111', separatorColor: '#E5B84B', baseColor: '#111111', separator: '+' },
     },
   ],
 
@@ -87,6 +94,7 @@ export const coupleInitialsTemplate: TemplateDefinition = {
     const fontName      = String(values.font)
     const letterColor   = String(values.letterColor)
     const separatorColor= String(values.separatorColor)
+    const baseColor     = String(values.baseColor)
     const letterHeight  = Number(values.letterHeight)
     const letterThk     = Number(values.letterThickness)
     const gap           = Number(values.gap)
@@ -100,61 +108,77 @@ export const coupleInitialsTemplate: TemplateDefinition = {
 
     const font = await loadFont(fontName)
 
-    // The separator visually looks smaller than a full initial — bump it a bit.
     const sepSize = letterHeight * 0.7
     const g1 = extrudeText(i1,  font, { size: letterHeight, depth: letterThk, curveSegments: CURVE_SEGMENTS_VISIBLE })
     const gS = extrudeText(sep, font, { size: sepSize,      depth: letterThk, curveSegments: CURVE_SEGMENTS_VISIBLE })
     const g2 = extrudeText(i2,  font, { size: letterHeight, depth: letterThk, curveSegments: CURVE_SEGMENTS_VISIBLE })
 
+    const b1 = bounds(g1)
+    const bS = bounds(gS)
+    const b2 = bounds(g2)
+
+    // Align every part's bottom to world Y = 0 by shifting each mesh up.
+    const y1 = -b1.min.y
+    const yS = -bS.min.y
+    const y2 = -b2.min.y
+
     const w1 = xExtent(g1)
     const wS = xExtent(gS)
     const w2 = xExtent(g2)
 
-    // Center the whole row on x = 0.
     const totalW = w1 + gap + wS + gap + w2
     const x1 = -totalW / 2 + w1 / 2
     const xS =  x1 + w1 / 2 + gap + wS / 2
     const x2 =  xS + wS / 2 + gap + w2 / 2
 
+    const separateParts = Boolean(values.separateParts ?? true)
+
     const group = new Group()
     group.name = 'couple-initials'
+    group.userData.separateParts = separateParts
 
     const letterMat = new MeshStandardMaterial({ color: letterColor,    roughness: 0.55 })
     const sepMat    = new MeshStandardMaterial({ color: separatorColor, roughness: 0.55 })
 
-    const m1 = new Mesh(g1, letterMat); m1.name = 'initial-1'; m1.position.x = x1; m1.castShadow = true; m1.receiveShadow = true
-    const mS = new Mesh(gS, sepMat);    mS.name = 'separator'; mS.position.x = xS; mS.castShadow = true; mS.receiveShadow = true
-    const m2 = new Mesh(g2, letterMat); m2.name = 'initial-2'; m2.position.x = x2; m2.castShadow = true; m2.receiveShadow = true
+    const m1 = new Mesh(g1, letterMat); m1.name = 'initial-1'; m1.position.set(x1, y1, 0); m1.castShadow = true; m1.receiveShadow = true
+    const mS = new Mesh(gS, sepMat);    mS.name = 'separator'; mS.position.set(xS, yS, 0); mS.castShadow = true; mS.receiveShadow = true
+    const m2 = new Mesh(g2, letterMat); m2.name = 'initial-2'; m2.position.set(x2, y2, 0); m2.castShadow = true; m2.receiveShadow = true
     group.add(m1, mS, m2)
-
-    // Bounds of the letter row (world space, without base)
-    const rowBounds = new Box3().setFromObject(group)
 
     if (includeStand) {
       let baseGeom: BufferGeometry = roundedBoxGeometry(baseWidth, baseHeight, baseDepth, baseCornerR, CURVE_SEGMENTS_VISIBLE)
+      // Row bottom is at Y = 0 (we shifted each part). Base top = 0 + embed.
       const embed = letterEmbed > 0 ? letterEmbed : OVERLAP
-      const baseY = rowBounds.min.y - baseHeight / 2 + embed
+      const baseY = -baseHeight / 2 + embed
 
       if (mode === 'export' && letterEmbed > 0) {
-        const cutParts: Array<{ geom: BufferGeometry; x: number }> = [
-          { geom: extrudeText(i1,  font, { size: letterHeight, depth: letterThk, curveSegments: CURVE_SEGMENTS_CUTTER }), x: x1 },
-          { geom: extrudeText(sep, font, { size: sepSize,      depth: letterThk, curveSegments: CURVE_SEGMENTS_CUTTER }), x: xS },
-          { geom: extrudeText(i2,  font, { size: letterHeight, depth: letterThk, curveSegments: CURVE_SEGMENTS_CUTTER }), x: x2 },
+        // Cut a pocket for every part (letters + separator) into the base top.
+        const cutSpecs: Array<{ text: string; size: number; x: number; y: number }> = [
+          { text: i1,  size: letterHeight, x: x1, y: y1 },
+          { text: sep, size: sepSize,      x: xS, y: yS },
+          { text: i2,  size: letterHeight, x: x2, y: y2 },
         ]
-        for (const p of cutParts) {
+        for (const spec of cutSpecs) {
+          const cutter = extrudeText(spec.text, font, {
+            size: spec.size,
+            depth: letterThk,
+            curveSegments: CURVE_SEGMENTS_CUTTER,
+          })
           if (tolerance > 0) {
-            const cb = new Box3().setFromBufferAttribute(p.geom.attributes.position as never)
+            const cb = bounds(cutter)
             const avgHalfExtent = (cb.max.x - cb.min.x + cb.max.y - cb.min.y) / 4
             const scaleXY = 1 + tolerance / Math.max(avgHalfExtent, 1)
-            p.geom.scale(scaleXY, scaleXY, 1)
+            cutter.scale(scaleXY, scaleXY, 1)
           }
-          const cutterMatrix = new Matrix4().makeTranslation(p.x, -baseY, 0)
-          baseGeom = subtract(baseGeom, p.geom, cutterMatrix)
-          p.geom.dispose()
+          // Cutter in world sits at (spec.x, spec.y) because visible mesh is at that position.
+          // Base local origin is at world (0, baseY, 0). So local cutter offset:
+          const cutterMatrix = new Matrix4().makeTranslation(spec.x, spec.y - baseY, 0)
+          baseGeom = subtract(baseGeom, cutter, cutterMatrix)
+          cutter.dispose()
         }
       }
 
-      const base = new Mesh(baseGeom, new MeshStandardMaterial({ color: letterColor, roughness: 0.55 }))
+      const base = new Mesh(baseGeom, new MeshStandardMaterial({ color: baseColor, roughness: 0.55 }))
       base.position.set(0, baseY, 0)
       base.name = 'stand'
       base.castShadow = true
@@ -162,21 +186,38 @@ export const coupleInitialsTemplate: TemplateDefinition = {
       group.add(base)
     }
 
+    // Lift so bottom sits on y = 0 (base bottom or letters bottom, whichever is lower)
     const overall = new Box3().setFromObject(group)
     group.position.y = -overall.min.y
     return group
   },
 
   getExportables: (group) => {
+    // If unified toggle is passed via a "separateParts" flag stored elsewhere,
+    // we would branch here. For now expose both variants and let TopBar pick.
+    // Default: separated (3 STLs) since user prints and glues each color.
+    const separateParts = group.userData.separateParts !== false
+    if (!separateParts) {
+      const all = new Group()
+      group.traverse((obj) => {
+        if (obj.name === 'initial-1' || obj.name === 'initial-2' || obj.name === 'separator' || obj.name === 'stand') {
+          all.add(obj.clone())
+        }
+      })
+      return [{ label: 'all', color: '#F5F0E1', object: all }]
+    }
     const letters = new Group()
     const separator = new Group()
+    const base = new Group()
     group.traverse((obj) => {
-      if (obj.name === 'initial-1' || obj.name === 'initial-2' || obj.name === 'stand') letters.add(obj.clone())
+      if (obj.name === 'initial-1' || obj.name === 'initial-2') letters.add(obj.clone())
       if (obj.name === 'separator') separator.add(obj.clone())
+      if (obj.name === 'stand') base.add(obj.clone())
     })
     return [
       { label: 'letters',   color: '#F5F0E1', object: letters },
       { label: 'separator', color: '#D62828', object: separator },
+      { label: 'base',      color: '#8C6A45', object: base },
     ]
   },
 }

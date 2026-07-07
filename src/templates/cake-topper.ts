@@ -21,7 +21,8 @@ export const cakeTopperTemplate: TemplateDefinition = {
     { kind: 'number', id: 'thickness',  labelKey: 'controls.thickness',  default: 4,  min: 2,  max: 15,  step: 0.5, unit: 'mm' },
 
     { kind: 'toggle', id: 'includeConnector', labelKey: 'controls.includeConnector', default: true },
-    { kind: 'number', id: 'connectorHeight',  labelKey: 'controls.connectorHeight',  default: 3, min: 1, max: 15, step: 0.5, unit: 'mm', visibleWhen: whenConnector },
+    { kind: 'number', id: 'connectorHeight',  labelKey: 'controls.connectorHeight',  default: 3, min: 1,    max: 15, step: 0.5, unit: 'mm', visibleWhen: whenConnector },
+    { kind: 'number', id: 'barGap',           labelKey: 'controls.barGap',           default: 0, min: -3,   max: 15, step: 0.5, unit: 'mm', visibleWhen: whenConnector },
 
     { kind: 'number', id: 'stickCount',   labelKey: 'controls.stickCount',   default: 2, min: 1, max: 3, step: 1,   unit: '' },
     { kind: 'number', id: 'stickWidth',   labelKey: 'controls.stickWidth',   default: 3,  min: 1.5, max: 10, step: 0.5, unit: 'mm' },
@@ -60,6 +61,7 @@ export const cakeTopperTemplate: TemplateDefinition = {
     const thickness   = Number(values.thickness)
     const includeConnector = Boolean(values.includeConnector)
     const connectorHeight  = Number(values.connectorHeight)
+    const barGap           = Number(values.barGap ?? 0)
     const stickCount   = Math.max(1, Math.min(3, Math.round(Number(values.stickCount))))
     const stickWidth   = Number(values.stickWidth)
     const stickLength  = Number(values.stickLength)
@@ -87,22 +89,23 @@ export const cakeTopperTemplate: TemplateDefinition = {
     textMesh.castShadow = true
     group.add(textMesh)
 
-    // Connector bar (optional): sits directly under the text, spanning its X width
+    // Connector bar: positioned barGap mm below the text (negative = overlap into text).
+    // barTopY = tMinY - barGap; barBottomY = barTopY - connectorHeight.
     let stickTopY = tMinY + OVERLAP
+    let stickReach = stickLength  // total stick length below text
     if (includeConnector) {
-      const barW = tMaxX - tMinX + 4  // 2mm bleed each side
+      const barW = tMaxX - tMinX + 4
+      const barTopY = tMinY - barGap
+      const barCenterY = barTopY - connectorHeight / 2
       const barGeom = new BoxGeometry(barW, connectorHeight, thickness)
       const bar = new Mesh(barGeom, mat)
       bar.name = 'connector'
-      // Box is centered on origin; move so its top edge aligns with tMinY + OVERLAP and Z base at 0
-      bar.position.set(
-        (tMinX + tMaxX) / 2,
-        tMinY - connectorHeight / 2 + OVERLAP,
-        thickness / 2
-      )
+      bar.position.set((tMinX + tMaxX) / 2, barCenterY, thickness / 2)
       bar.castShadow = true
       group.add(bar)
-      stickTopY = tMinY - connectorHeight + OVERLAP
+      // Sticks anchor into text (stickTopY = tMinY + OVERLAP) and reach below the bar
+      // by the user's stickLength. Total geometry length spans text→gap→bar→below.
+      stickReach = OVERLAP + Math.max(0, barGap) + connectorHeight + stickLength
     }
 
     // Sticks — placed symmetrically around x=0
@@ -115,10 +118,10 @@ export const cakeTopperTemplate: TemplateDefinition = {
       positions.push(-stickSpacing, 0, stickSpacing)
     }
     for (const sx of positions) {
-      const sGeom = new BoxGeometry(stickWidth, stickLength, thickness)
+      const sGeom = new BoxGeometry(stickWidth, stickReach, thickness)
       const s = new Mesh(sGeom, mat)
       s.name = 'stick'
-      s.position.set(sx, stickTopY - stickLength / 2, thickness / 2)
+      s.position.set(sx, stickTopY - stickReach / 2, thickness / 2)
       s.castShadow = true
       group.add(s)
     }

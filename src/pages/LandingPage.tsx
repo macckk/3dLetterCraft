@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { templates } from '@/templates/registry'
+import { TemplateIcon } from '@/components/TemplateIcon'
 
 export function LandingPage() {
   const { t } = useTranslation()
@@ -28,8 +29,8 @@ export function LandingPage() {
               to={`/editor/${tpl.id}`}
               className="group flex flex-col gap-2 rounded-lg border border-neutral-800 bg-neutral-900 hover:bg-neutral-800/70 hover:border-indigo-500 transition-colors p-4"
             >
-              <div className="aspect-[4/3] rounded bg-gradient-to-br from-neutral-800 to-neutral-950 border border-neutral-800 flex items-center justify-center text-4xl text-neutral-600">
-                <span aria-hidden>{templateIcon(tpl.id)}</span>
+              <div className="aspect-[4/3] rounded bg-gradient-to-br from-neutral-800 to-neutral-950 border border-neutral-800 overflow-hidden">
+                <TemplateIcon id={tpl.id} />
               </div>
               <div className="text-sm font-medium text-neutral-100 group-hover:text-white">
                 {t(tpl.nameKey)}
@@ -49,12 +50,3 @@ export function LandingPage() {
   )
 }
 
-function templateIcon(id: string): string {
-  switch (id) {
-    case 'name-with-script':  return 'Nn'
-    case 'couple-initials':   return 'M&J'
-    case 'heart-with-name':   return '♥'
-    case 'cake-topper':       return '🎂'
-    default:                  return '★'
-  }
-}

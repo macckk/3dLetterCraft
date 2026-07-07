@@ -4,7 +4,7 @@ import type { ControlValues, TemplateDefinition, ValidationIssue } from './types
 import { TOLERANCE_DEFAULT, TOLERANCE_MAX, TOLERANCE_MIN, TOLERANCE_STEP } from '@/lib/tolerance'
 import { loadFont } from '@/lib/fonts/loader'
 import { extrudeText } from '@/lib/geometry/text'
-import { heartPlateGeometry, heartTopY } from '@/lib/geometry/heart'
+import { heartPlateGeometry, heartDipY } from '@/lib/geometry/heart'
 import { subtract } from '@/lib/geometry/csg'
 
 const OVERLAP = 0.4
@@ -88,9 +88,10 @@ export const heartWithNameTemplate: TemplateDefinition = {
 
     let holeSpec: { x: number; y: number; radius: number } | undefined
     if (includeHole) {
-      const topY = heartTopY(heartSize)
-      // Put hole near the top-center dip
-      const hy = topY - holeMargin - holeDiameter / 2
+      // The interior boundary at x=0 is the top-center dip (heartDipY).
+      // Sit the hole safely below it so the whole hole is inside the material.
+      const dipY = heartDipY(heartSize)
+      const hy = dipY - holeMargin - holeDiameter / 2
       holeSpec = { x: 0, y: hy, radius: holeDiameter / 2 }
     }
 
