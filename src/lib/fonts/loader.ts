@@ -3,8 +3,8 @@ import type { Font } from 'opentype.js'
 
 // Filename in /public/fonts/ per display name.
 export const FONT_FILES: Record<string, string> = {
-  'Playfair Display': 'PlayfairDisplay.ttf',
-  'Great Vibes':      'GreatVibes.ttf',
+  'Cardo':      'Cardo.ttf',
+  'Sacramento': 'Sacramento.ttf',
 }
 
 const cache = new Map<string, Promise<Font>>()
@@ -20,7 +20,14 @@ export async function loadFont(name: string): Promise<Font> {
       const res = await fetch(url)
       if (!res.ok) throw new Error(`Failed to load font ${name}: HTTP ${res.status}`)
       const buffer = await res.arrayBuffer()
-      return opentype.parse(buffer)
+      try {
+        return opentype.parse(buffer)
+      } catch (err) {
+        throw new Error(
+          `Failed to parse font ${name}: ${(err as Error).message}. ` +
+          `Try a different font — this one uses OpenType features not supported by opentype.js.`
+        )
+      }
     })().catch((err) => {
       cache.delete(name)
       throw err

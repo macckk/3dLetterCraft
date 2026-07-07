@@ -4,9 +4,9 @@ import { getTemplate } from '@/templates/registry'
 import type { ControlType } from '@/templates/types'
 
 const AVAILABLE_FONTS = {
-  serif:  ['Playfair Display', 'Cormorant Garamond', 'Cinzel'],
-  script: ['Great Vibes', 'Allura', 'Sacramento', 'Pacifico', 'Dancing Script'],
-  sans:   ['Inter', 'Poppins'],
+  serif:  ['Cardo'],
+  script: ['Sacramento'],
+  sans:   [],
 }
 
 export function ControlPanel() {
