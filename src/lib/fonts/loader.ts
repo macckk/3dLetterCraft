@@ -1,5 +1,5 @@
-import opentype from 'opentype.js'
-import type { Font } from 'opentype.js'
+import { TTFLoader } from 'three/examples/jsm/loaders/TTFLoader.js'
+import { Font } from 'three/examples/jsm/loaders/FontLoader.js'
 
 // Filename in /public/fonts/ per display name.
 export const FONT_FILES: Record<string, string> = {
@@ -8,6 +8,7 @@ export const FONT_FILES: Record<string, string> = {
 }
 
 const cache = new Map<string, Promise<Font>>()
+const loader = new TTFLoader()
 
 export async function loadFont(name: string): Promise<Font> {
   const file = FONT_FILES[name]
@@ -16,23 +17,20 @@ export async function loadFont(name: string): Promise<Font> {
   let promise = cache.get(name)
   if (!promise) {
     const url = `${import.meta.env.BASE_URL}fonts/${file}`
-    promise = (async () => {
-      const res = await fetch(url)
-      if (!res.ok) throw new Error(`Failed to load font ${name}: HTTP ${res.status}`)
-      const buffer = await res.arrayBuffer()
-      try {
-        return opentype.parse(buffer)
-      } catch (err) {
-        throw new Error(
-          `Failed to parse font ${name}: ${(err as Error).message}. ` +
-          `Try a different font — this one uses OpenType features not supported by opentype.js.`
-        )
-      }
-    })().catch((err) => {
-      cache.delete(name)
-      throw err
+    promise = new Promise<Font>((resolve, reject) => {
+      loader.load(
+        url,
+        (json) => resolve(new Font(json)),
+        undefined,
+        (err) => {
+          cache.delete(name)
+          reject(err instanceof Error ? err : new Error(`Failed to load font ${name}`))
+        }
+      )
     })
     cache.set(name, promise)
   }
   return promise
 }
+
+export type { Font }
