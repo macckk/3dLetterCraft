@@ -16,7 +16,12 @@ export async function loadFont(name: string): Promise<Font> {
   let promise = cache.get(name)
   if (!promise) {
     const url = `${import.meta.env.BASE_URL}fonts/${file}`
-    promise = opentype.load(url).catch((err) => {
+    promise = (async () => {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`Failed to load font ${name}: HTTP ${res.status}`)
+      const buffer = await res.arrayBuffer()
+      return opentype.parse(buffer)
+    })().catch((err) => {
       cache.delete(name)
       throw err
     })
