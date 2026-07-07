@@ -26,7 +26,8 @@
     "baseWidth": "Base width (X)",
     "baseHeight": "Base height (Y)",
     "baseDepth": "Base depth (Z)",
-    "baseCornerRadius": "Base corner radius"
+    "baseCornerRadius": "Base corner radius",
+    "letterEmbed": "Letter embed into base"
   },
   "fontGroups": {
     "serif": "Serif",

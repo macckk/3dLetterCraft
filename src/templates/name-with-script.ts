@@ -48,6 +48,7 @@ export const nameWithScriptTemplate: TemplateDefinition = {
     { kind: 'number', id: 'baseHeight',        labelKey: 'controls.baseHeight',        default: 18,  min: 5,  max: 60,  step: 1,   unit: 'mm', visibleWhen: whenBase },
     { kind: 'number', id: 'baseDepth',         labelKey: 'controls.baseDepth',         default: 45,  min: 15, max: 150, step: 5,   unit: 'mm', visibleWhen: whenBase },
     { kind: 'number', id: 'baseCornerRadius',  labelKey: 'controls.baseCornerRadius',  default: 3,   min: 0,  max: 30,  step: 0.5, unit: 'mm', visibleWhen: whenBase },
+    { kind: 'number', id: 'letterEmbed',       labelKey: 'controls.letterEmbed',       default: 3,   min: 0,  max: 15,  step: 0.5, unit: 'mm', visibleWhen: whenBase },
   ],
 
   build: async ({ values, mode }) => {
@@ -69,6 +70,7 @@ export const nameWithScriptTemplate: TemplateDefinition = {
     const baseHeight     = Number(values.baseHeight)
     const baseDepth      = Number(values.baseDepth)
     const baseCornerR    = Number(values.baseCornerRadius)
+    const letterEmbed    = Number(values.letterEmbed ?? 0)
 
     const [bigFont, cursiveFont] = await Promise.all([
       loadFont(bigFontName),
@@ -134,15 +136,33 @@ export const nameWithScriptTemplate: TemplateDefinition = {
 
     // Base — rounded box, back face at z = 0, extending forward
     if (includeStand) {
-      const baseGeom = roundedBoxGeometry(baseWidth, baseHeight, baseDepth, baseCornerR, CURVE_SEGMENTS_VISIBLE)
+      let baseGeom: BufferGeometry = roundedBoxGeometry(baseWidth, baseHeight, baseDepth, baseCornerR, CURVE_SEGMENTS_VISIBLE)
+      // Positive letterEmbed sinks the letter into the base by that many mm;
+      // 0 falls back to a tiny OVERLAP so the preview has no z-fighting seam.
+      const embed = letterEmbed > 0 ? letterEmbed : OVERLAP
+      const baseY = bigBounds.min.y - baseHeight / 2 + embed
+
+      // Carve a slot in the base matching the letter footprint (export only).
+      if (mode === 'export' && letterEmbed > 0) {
+        const baseCutter = extrudeText(firstChar, bigFont, {
+          size: bigHeight,
+          depth: letterThk,
+          curveSegments: CURVE_SEGMENTS_CUTTER,
+        })
+        if (tolerance > 0) {
+          const cb = new Box3().setFromBufferAttribute(baseCutter.attributes.position as never)
+          const avgHalfExtent = (cb.max.x - cb.min.x + cb.max.y - cb.min.y) / 4
+          const scaleXY = 1 + tolerance / Math.max(avgHalfExtent, 1)
+          baseCutter.scale(scaleXY, scaleXY, 1)
+        }
+        // Letter sits at world (0, 0, 0). Base local origin is at world (0, baseY, 0).
+        const cutterMatrix = new Matrix4().makeTranslation(0, -baseY, 0)
+        baseGeom = subtract(baseGeom, baseCutter, cutterMatrix)
+        baseCutter.dispose()
+      }
+
       const base = new Mesh(baseGeom, new MeshStandardMaterial({ color: bigColor, roughness: 0.55 }))
-      // roundedBoxGeometry is centered on X/Y with z from 0 to baseDepth.
-      // We rotate to lay it as the base plate: extrusion axis (Z) becomes X-Y? No, we want:
-      //   width  → X
-      //   height → Y (thin dimension)
-      //   depth  → Z
-      // That's already the geometry's layout. Position:
-      base.position.set(0, bigBounds.min.y - baseHeight / 2 + OVERLAP, 0)
+      base.position.set(0, baseY, 0)
       base.name = 'stand'
       base.castShadow = true
       base.receiveShadow = true

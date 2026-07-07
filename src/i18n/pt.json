@@ -26,7 +26,8 @@
     "baseWidth": "Largura da base (X)",
     "baseHeight": "Altura da base (Y)",
     "baseDepth": "Profundidade da base (Z)",
-    "baseCornerRadius": "Raio dos cantos da base"
+    "baseCornerRadius": "Raio dos cantos da base",
+    "letterEmbed": "Encaixe da letra na base"
   },
   "fontGroups": {
     "serif": "Com serifa",
