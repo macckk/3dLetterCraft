@@ -29,9 +29,11 @@ export function ControlPanel() {
       </div>
 
       <div className="flex flex-col gap-3">
-        {tpl.controls.map((c) => (
-          <Control key={c.id} control={c} value={values[c.id]} onChange={(v) => setValue(c.id, v)} />
-        ))}
+        {tpl.controls
+          .filter((c) => !c.visibleWhen || c.visibleWhen(values))
+          .map((c) => (
+            <Control key={c.id} control={c} value={values[c.id]} onChange={(v) => setValue(c.id, v)} />
+          ))}
       </div>
 
       <button

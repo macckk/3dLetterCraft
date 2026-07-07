@@ -1,16 +1,24 @@
-import { BoxGeometry, Box3, Group, Matrix4, Mesh, MeshStandardMaterial } from 'three'
+import { Box3, Group, Matrix4, Mesh, MeshStandardMaterial } from 'three'
 import type { BufferGeometry } from 'three'
-import type { TemplateDefinition } from './types'
+import type { ControlValues, TemplateDefinition } from './types'
 import { TOLERANCE_DEFAULT, TOLERANCE_MAX, TOLERANCE_MIN, TOLERANCE_STEP } from '@/lib/tolerance'
 import { loadFont } from '@/lib/fonts/loader'
 import { extrudeText } from '@/lib/geometry/text'
+import { roundedBoxGeometry } from '@/lib/geometry/box'
 import { subtract } from '@/lib/geometry/csg'
 
 const OVERLAP = 0.4
 const CUTTER_OVERSHOOT = 1.0
 
+// Curve resolution — higher = smoother printed surface, more polys.
+// Keep the cutter LOWER than the visible parts so CSG stays snappy.
+const CURVE_SEGMENTS_VISIBLE = 16
+const CURVE_SEGMENTS_CUTTER = 8
+
 const BIG_LETTER_NAMES = new Set(['big-letter', 'stand'])
 const SCRIPT_NAMES = new Set(['script-text'])
+
+const whenBase = (v: ControlValues) => v.includeStand === true
 
 export const nameWithScriptTemplate: TemplateDefinition = {
   id: 'name-with-script',
@@ -34,11 +42,12 @@ export const nameWithScriptTemplate: TemplateDefinition = {
     { kind: 'number', id: 'scriptRelief',    labelKey: 'controls.scriptRelief',    default: 1.5, min: 0,   max: 10,  step: 0.5, unit: 'mm' },
     { kind: 'number', id: 'tolerance',       labelKey: 'controls.tolerance',       default: TOLERANCE_DEFAULT, min: TOLERANCE_MIN, max: TOLERANCE_MAX, step: TOLERANCE_STEP, unit: 'mm' },
 
-    // Base
-    { kind: 'toggle', id: 'includeStand',    labelKey: 'controls.includeStand',    default: true },
-    { kind: 'number', id: 'baseWidth',       labelKey: 'controls.baseWidth',       default: 130, min: 30,  max: 400, step: 5,   unit: 'mm' },
-    { kind: 'number', id: 'baseHeight',      labelKey: 'controls.baseHeight',      default: 18,  min: 5,   max: 60,  step: 1,   unit: 'mm' },
-    { kind: 'number', id: 'baseDepth',       labelKey: 'controls.baseDepth',       default: 45,  min: 15,  max: 150, step: 5,   unit: 'mm' },
+    // Base — the rest of the base controls only show when includeStand is true
+    { kind: 'toggle', id: 'includeStand',      labelKey: 'controls.includeStand',      default: true },
+    { kind: 'number', id: 'baseWidth',         labelKey: 'controls.baseWidth',         default: 130, min: 30, max: 400, step: 5,   unit: 'mm', visibleWhen: whenBase },
+    { kind: 'number', id: 'baseHeight',        labelKey: 'controls.baseHeight',        default: 18,  min: 5,  max: 60,  step: 1,   unit: 'mm', visibleWhen: whenBase },
+    { kind: 'number', id: 'baseDepth',         labelKey: 'controls.baseDepth',         default: 45,  min: 15, max: 150, step: 5,   unit: 'mm', visibleWhen: whenBase },
+    { kind: 'number', id: 'baseCornerRadius',  labelKey: 'controls.baseCornerRadius',  default: 3,   min: 0,  max: 30,  step: 0.5, unit: 'mm', visibleWhen: whenBase },
   ],
 
   build: async ({ values, mode }) => {
@@ -59,26 +68,35 @@ export const nameWithScriptTemplate: TemplateDefinition = {
     const baseWidth      = Number(values.baseWidth)
     const baseHeight     = Number(values.baseHeight)
     const baseDepth      = Number(values.baseDepth)
+    const baseCornerR    = Number(values.baseCornerRadius)
 
     const [bigFont, cursiveFont] = await Promise.all([
       loadFont(bigFontName),
       loadFont(scriptFontName),
     ])
 
-    // Big letter — extruded z: 0 → letterThk
-    const bigGeom = extrudeText(firstChar, bigFont, { size: bigHeight, depth: letterThk })
+    // Big letter (z: 0 → letterThk)
+    const bigGeom = extrudeText(firstChar, bigFont, {
+      size: bigHeight,
+      depth: letterThk,
+      curveSegments: CURVE_SEGMENTS_VISIBLE,
+    })
 
-    // Script insert — thickness = inset (inside pocket) + relief (protruding)
+    // Script insert (thickness = inset + relief)
     const totalScriptDepth = Math.max(0.1, scriptInset + scriptRelief)
-    const scriptGeom = extrudeText(name, cursiveFont, { size: scriptHeight, depth: totalScriptDepth })
+    const scriptGeom = extrudeText(name, cursiveFont, {
+      size: scriptHeight,
+      depth: totalScriptDepth,
+      curveSegments: CURVE_SEGMENTS_VISIBLE,
+    })
 
-    // CSG pocket — only in export mode, only when there's actual inset to carve
+    // CSG pocket in export mode when there's actual inset
     let bigWithPocket: BufferGeometry = bigGeom
     if (mode === 'export' && scriptInset > 0) {
       const cutterGeom = extrudeText(name, cursiveFont, {
         size: scriptHeight,
         depth: scriptInset + CUTTER_OVERSHOOT,
-        curveSegments: 4,
+        curveSegments: CURVE_SEGMENTS_CUTTER,
       })
       if (tolerance > 0) {
         const cb = new Box3().setFromBufferAttribute(cutterGeom.attributes.position as never)
@@ -86,11 +104,7 @@ export const nameWithScriptTemplate: TemplateDefinition = {
         const scaleXY = 1 + tolerance / Math.max(avgHalfExtent, 1)
         cutterGeom.scale(scaleXY, scaleXY, 1)
       }
-      const cutterMatrix = new Matrix4().makeTranslation(
-        0,
-        scriptYOffset,
-        letterThk - scriptInset
-      )
+      const cutterMatrix = new Matrix4().makeTranslation(0, scriptYOffset, letterThk - scriptInset)
       bigWithPocket = subtract(bigGeom, cutterGeom, cutterMatrix)
       bigGeom.dispose()
       cutterGeom.dispose()
@@ -108,10 +122,7 @@ export const nameWithScriptTemplate: TemplateDefinition = {
     bigMesh.receiveShadow = true
     group.add(bigMesh)
 
-    // Script placement:
-    //   • back face at z = letterThk − scriptInset (pocket floor / letter front)
-    //   • front face at z = letterThk + scriptRelief  (protruding by relief amount)
-    //   • when scriptInset = 0 in preview, nudge slightly into the letter to avoid z-fight
+    // Script
     const scriptZ = mode === 'preview' && scriptInset === 0
       ? letterThk - OVERLAP
       : letterThk - scriptInset
@@ -121,17 +132,17 @@ export const nameWithScriptTemplate: TemplateDefinition = {
     scriptMesh.castShadow = true
     group.add(scriptMesh)
 
-    // Base plate — back face aligned with letter's back face (z = 0), extends forward.
+    // Base — rounded box, back face at z = 0, extending forward
     if (includeStand) {
-      const base = new Mesh(
-        new BoxGeometry(baseWidth, baseHeight, baseDepth),
-        new MeshStandardMaterial({ color: bigColor, roughness: 0.55 })
-      )
-      base.position.set(
-        0,
-        bigBounds.min.y - baseHeight / 2 + OVERLAP,
-        baseDepth / 2
-      )
+      const baseGeom = roundedBoxGeometry(baseWidth, baseHeight, baseDepth, baseCornerR, CURVE_SEGMENTS_VISIBLE)
+      const base = new Mesh(baseGeom, new MeshStandardMaterial({ color: bigColor, roughness: 0.55 }))
+      // roundedBoxGeometry is centered on X/Y with z from 0 to baseDepth.
+      // We rotate to lay it as the base plate: extrusion axis (Z) becomes X-Y? No, we want:
+      //   width  → X
+      //   height → Y (thin dimension)
+      //   depth  → Z
+      // That's already the geometry's layout. Position:
+      base.position.set(0, bigBounds.min.y - baseHeight / 2 + OVERLAP, 0)
       base.name = 'stand'
       base.castShadow = true
       base.receiveShadow = true

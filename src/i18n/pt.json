@@ -25,7 +25,8 @@
     "includeStand": "Incluir base de apoio",
     "baseWidth": "Largura da base (X)",
     "baseHeight": "Altura da base (Y)",
-    "baseDepth": "Profundidade da base (Z)"
+    "baseDepth": "Profundidade da base (Z)",
+    "baseCornerRadius": "Raio dos cantos da base"
   },
   "templates": {
     "nameWithScript": {

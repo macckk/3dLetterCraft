@@ -25,7 +25,8 @@
     "includeStand": "Include base",
     "baseWidth": "Base width (X)",
     "baseHeight": "Base height (Y)",
-    "baseDepth": "Base depth (Z)"
+    "baseDepth": "Base depth (Z)",
+    "baseCornerRadius": "Base corner radius"
   },
   "templates": {
     "nameWithScript": {

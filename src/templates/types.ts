@@ -1,14 +1,23 @@
 import type { Group } from 'three'
 import type { TFunction } from 'i18next'
 
-export type ControlType =
+export type ControlValues = Record<string, string | number | boolean>
+
+type BaseControl = {
+  /**
+   * If provided, the control is only rendered when this predicate returns true.
+   * Used to hide dependent controls (e.g. base sizing when the base is disabled).
+   */
+  visibleWhen?: (values: ControlValues) => boolean
+}
+
+export type ControlType = BaseControl & (
   | { kind: 'text'; id: string; labelKey: string; default: string; maxLength?: number }
   | { kind: 'number'; id: string; labelKey: string; default: number; min: number; max: number; step: number; unit?: string }
   | { kind: 'color'; id: string; labelKey: string; default: string }
   | { kind: 'font'; id: string; labelKey: string; default: string; category?: 'serif' | 'script' | 'sans' }
   | { kind: 'toggle'; id: string; labelKey: string; default: boolean }
-
-export type ControlValues = Record<string, string | number | boolean>
+)
 
 export type BuildMode = 'preview' | 'export'
 
