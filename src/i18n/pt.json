@@ -47,7 +47,17 @@
     "heartThickness": "Espessura do coração",
     "includeHole": "Furo para pendurar",
     "holeDiameter": "Diâmetro do furo",
-    "holeMargin": "Margem do topo até o furo"
+    "holeMargin": "Margem do topo até o furo",
+    "text": "Texto",
+    "color": "Cor",
+    "textHeight": "Altura do texto",
+    "thickness": "Espessura",
+    "includeConnector": "Barra de reforço embaixo",
+    "connectorHeight": "Altura da barra",
+    "stickCount": "Número de palitos",
+    "stickWidth": "Largura do palito",
+    "stickLength": "Comprimento do palito",
+    "stickSpacing": "Distância entre palitos"
   },
   "fontGroups": {
     "serif": "Com serifa",
@@ -65,7 +75,9 @@
     "zeroTolerance": "Folga de encaixe está em 0. As peças provavelmente não vão se encaixar após a impressão.",
     "pocketTooDeep": "Profundidade do cursivo maior que metade da espessura da letra ({{letterThk}}mm). Pode enfraquecer a peça.",
     "scriptTooTall": "Nome cursivo maior que 85% da altura da letra. Pode estourar as bordas.",
-    "baseTooThin": "Base fina demais para o encaixe. Considere aumentar para pelo menos {{min}}mm."
+    "baseTooThin": "Base fina demais para o encaixe. Considere aumentar para pelo menos {{min}}mm.",
+    "stickTooThin": "Palito muito fino ({{value}}mm). Pode quebrar. Mínimo recomendado: {{min}}mm.",
+    "stickTooShort": "Palito curto demais ({{value}}mm). Vai ter pouca fixação no bolo. Mínimo: {{min}}mm."
   },
   "templates": {
     "nameWithScript": {
@@ -93,6 +105,15 @@
         "red": "Vermelho",
         "pastel": "Pastel",
         "gold": "Dourado"
+      }
+    },
+    "cakeTopper": {
+      "name": "Topo de bolo",
+      "description": "Texto em cursiva com palitos para espetar no bolo",
+      "presets": {
+        "gold": "Dourado",
+        "rose": "Rosé",
+        "black": "Preto"
       }
     }
   },

@@ -47,7 +47,17 @@
     "heartThickness": "Heart thickness",
     "includeHole": "Hanging hole",
     "holeDiameter": "Hole diameter",
-    "holeMargin": "Top-edge margin to hole"
+    "holeMargin": "Top-edge margin to hole",
+    "text": "Text",
+    "color": "Color",
+    "textHeight": "Text height",
+    "thickness": "Thickness",
+    "includeConnector": "Reinforcement bar underneath",
+    "connectorHeight": "Bar height",
+    "stickCount": "Stick count",
+    "stickWidth": "Stick width",
+    "stickLength": "Stick length",
+    "stickSpacing": "Distance between sticks"
   },
   "fontGroups": {
     "serif": "Serif",
@@ -65,7 +75,9 @@
     "zeroTolerance": "Fit clearance is 0. Parts will likely not slot together after printing.",
     "pocketTooDeep": "Script pocket deeper than half the letter thickness ({{letterThk}}mm). May weaken the piece.",
     "scriptTooTall": "Script name is taller than 85% of the big letter. It may overflow.",
-    "baseTooThin": "Base too thin for the embed depth. Consider raising to at least {{min}}mm."
+    "baseTooThin": "Base too thin for the embed depth. Consider raising to at least {{min}}mm.",
+    "stickTooThin": "Stick too thin ({{value}}mm). It may snap. Recommended minimum: {{min}}mm.",
+    "stickTooShort": "Stick too short ({{value}}mm). Poor grip in the cake. Minimum: {{min}}mm."
   },
   "templates": {
     "nameWithScript": {
@@ -93,6 +105,15 @@
         "red": "Red",
         "pastel": "Pastel",
         "gold": "Gold"
+      }
+    },
+    "cakeTopper": {
+      "name": "Cake topper",
+      "description": "Cursive text with sticks to plant into a cake",
+      "presets": {
+        "gold": "Gold",
+        "rose": "Rose",
+        "black": "Black"
       }
     }
   },
