@@ -9,6 +9,12 @@
     "myDesigns": "Meus designs",
     "download": "Baixar STL"
   },
+  "landing": {
+    "headline": "Crie peças 3D com nomes e letras",
+    "subhead": "Escolha um modelo, personalize com seus dados e baixe o arquivo STL pronto para impressão. Tudo grátis, tudo no navegador.",
+    "chooseTemplate": "Escolha um modelo para começar",
+    "footer": "Sem cadastro. Sem cobrança. Feito para impressoras 3D FDM."
+  },
   "controls": {
     "name": "Nome",
     "bigFont": "Fonte da letra grande",

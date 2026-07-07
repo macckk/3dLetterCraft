@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link, useLocation } from 'react-router-dom'
 import { getTemplate } from '@/templates/registry'
 import { useDesignStore } from '@/store/design'
 import { exportSTL } from '@/lib/export/stl'
@@ -8,6 +9,8 @@ import { trackEvent } from '@/analytics'
 
 export function TopBar() {
   const { t, i18n } = useTranslation()
+  const location = useLocation()
+  const inEditor = location.pathname.startsWith('/editor/')
   const templateId = useDesignStore((s) => s.templateId)
   const values = useDesignStore((s) => s.values)
   const [copied, setCopied] = useState(false)
@@ -48,7 +51,9 @@ export function TopBar() {
   return (
     <header className="flex items-center justify-between px-4 py-3 border-b border-neutral-800 bg-neutral-950/60 backdrop-blur">
       <div className="flex items-baseline gap-3">
-        <h1 className="text-lg font-semibold tracking-tight">{t('app.title')}</h1>
+        <Link to="/" className="text-lg font-semibold tracking-tight hover:text-indigo-300 transition-colors">
+          {t('app.title')}
+        </Link>
         <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
           {t('app.free')}
         </span>
@@ -63,19 +68,23 @@ export function TopBar() {
         >
           {i18n.language.toUpperCase().slice(0, 2)}
         </button>
-        <button
-          onClick={share}
-          className="text-xs px-2.5 py-1.5 rounded border border-neutral-700 hover:border-neutral-500 text-neutral-300"
-          title={t('actions.share')}
-        >
-          {copied ? t('actions.shareCopied') : t('actions.share')}
-        </button>
-        <button
-          onClick={download}
-          className="text-sm px-3 py-1.5 rounded bg-indigo-500 hover:bg-indigo-400 text-white font-medium"
-        >
-          {t('nav.download')}
-        </button>
+        {inEditor && (
+          <>
+            <button
+              onClick={share}
+              className="text-xs px-2.5 py-1.5 rounded border border-neutral-700 hover:border-neutral-500 text-neutral-300"
+              title={t('actions.share')}
+            >
+              {copied ? t('actions.shareCopied') : t('actions.share')}
+            </button>
+            <button
+              onClick={download}
+              className="text-sm px-3 py-1.5 rounded bg-indigo-500 hover:bg-indigo-400 text-white font-medium"
+            >
+              {t('nav.download')}
+            </button>
+          </>
+        )}
       </div>
     </header>
   )

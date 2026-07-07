@@ -9,6 +9,12 @@
     "myDesigns": "My designs",
     "download": "Download STL"
   },
+  "landing": {
+    "headline": "Design 3D-printable name pieces",
+    "subhead": "Pick a template, customize it with your details, and download a ready-to-print STL. All free, all in the browser.",
+    "chooseTemplate": "Pick a template to start",
+    "footer": "No signup. No paywall. Built for FDM 3D printers."
+  },
   "controls": {
     "name": "Name",
     "bigFont": "Big letter font",

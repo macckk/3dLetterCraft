@@ -29,10 +29,12 @@ export function decodeState(encoded: string): ShareState | null {
 }
 
 export function buildShareUrl(state: ShareState): string {
+  // Route lives in the hash under HashRouter — preserve it so the recipient
+  // lands on the editor for the correct template. The state rides on ?d=.
   const url = new URL(window.location.href)
-  url.hash = ''
   url.search = ''
   url.searchParams.set(PARAM, encodeState(state))
+  url.hash = `#/editor/${encodeURIComponent(state.templateId)}`
   return url.toString()
 }
 
