@@ -16,10 +16,16 @@
     "bigColor": "Big letter color",
     "scriptColor": "Script color",
     "bigHeight": "Big letter height",
-    "baseThickness": "Base thickness",
-    "scriptDepth": "Script relief depth",
+    "letterThickness": "Letter thickness",
+    "scriptHeight": "Script height",
+    "scriptYOffset": "Script vertical position",
+    "scriptInset": "Depth inside letter",
+    "scriptRelief": "Script relief (protrusion)",
     "tolerance": "Fit clearance",
-    "includeStand": "Include stand"
+    "includeStand": "Include base",
+    "baseWidth": "Base width (X)",
+    "baseHeight": "Base height (Y)",
+    "baseDepth": "Base depth (Z)"
   },
   "templates": {
     "nameWithScript": {

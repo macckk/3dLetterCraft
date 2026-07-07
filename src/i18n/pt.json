@@ -16,10 +16,16 @@
     "bigColor": "Cor da letra grande",
     "scriptColor": "Cor do nome cursivo",
     "bigHeight": "Altura da letra grande",
-    "baseThickness": "Espessura da base",
-    "scriptDepth": "Relevo do nome",
+    "letterThickness": "Espessura da letra",
+    "scriptHeight": "Altura do nome cursivo",
+    "scriptYOffset": "Posição vertical do cursivo",
+    "scriptInset": "Profundidade dentro da letra",
+    "scriptRelief": "Relevo (saliência) do cursivo",
     "tolerance": "Folga de encaixe",
-    "includeStand": "Incluir base de apoio"
+    "includeStand": "Incluir base de apoio",
+    "baseWidth": "Largura da base (X)",
+    "baseHeight": "Altura da base (Y)",
+    "baseDepth": "Profundidade da base (Z)"
   },
   "templates": {
     "nameWithScript": {
