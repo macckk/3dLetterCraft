@@ -62,6 +62,9 @@
     "reset": "Restaurar padrões",
     "save": "Salvar design",
     "download": "Baixar",
-    "language": "Idioma"
+    "language": "Idioma",
+    "share": "Compartilhar",
+    "shareCopied": "Link copiado!",
+    "shareFallback": "Copie o link abaixo:"
   }
 }

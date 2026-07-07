@@ -62,6 +62,9 @@
     "reset": "Reset",
     "save": "Save design",
     "download": "Download",
-    "language": "Language"
+    "language": "Language",
+    "share": "Share",
+    "shareCopied": "Link copied!",
+    "shareFallback": "Copy the link below:"
   }
 }

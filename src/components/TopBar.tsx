@@ -1,18 +1,33 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getTemplate } from '@/templates/registry'
 import { useDesignStore } from '@/store/design'
 import { exportSTL } from '@/lib/export/stl'
+import { buildShareUrl } from '@/lib/share/url'
 import { trackEvent } from '@/analytics'
 
 export function TopBar() {
   const { t, i18n } = useTranslation()
   const templateId = useDesignStore((s) => s.templateId)
   const values = useDesignStore((s) => s.values)
+  const [copied, setCopied] = useState(false)
 
   function toggleLang() {
     const next = i18n.language.startsWith('pt') ? 'en' : 'pt'
     void i18n.changeLanguage(next)
     trackEvent('lang_change', { to: next })
+  }
+
+  async function share() {
+    const url = buildShareUrl({ templateId, values })
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1600)
+      trackEvent('share_url', { templateId })
+    } catch {
+      window.prompt(t('actions.shareFallback'), url)
+    }
   }
 
   async function download() {
@@ -47,6 +62,13 @@ export function TopBar() {
           title={t('actions.language')}
         >
           {i18n.language.toUpperCase().slice(0, 2)}
+        </button>
+        <button
+          onClick={share}
+          className="text-xs px-2.5 py-1.5 rounded border border-neutral-700 hover:border-neutral-500 text-neutral-300"
+          title={t('actions.share')}
+        >
+          {copied ? t('actions.shareCopied') : t('actions.share')}
         </button>
         <button
           onClick={download}
