@@ -4,7 +4,7 @@ import type { ControlValues, TemplateDefinition, ValidationIssue } from './types
 import { TOLERANCE_DEFAULT, TOLERANCE_MAX, TOLERANCE_MIN, TOLERANCE_STEP } from '@/lib/tolerance'
 import { loadFont } from '@/lib/fonts/loader'
 import { extrudeText } from '@/lib/geometry/text'
-import { heartPlateGeometry, heartDipY } from '@/lib/geometry/heart'
+import { heartPlateGeometry } from '@/lib/geometry/heart'
 import { subtract } from '@/lib/geometry/csg'
 
 const OVERLAP = 0.4
@@ -12,7 +12,11 @@ const CUTTER_OVERSHOOT = 1.0
 const CURVE_SEGMENTS_VISIBLE = 24
 const CURVE_SEGMENTS_CUTTER = 12
 
-const whenHole = (v: ControlValues) => v.includeHole === true
+// Fixed keychain hole: 3 mm diameter, ~3 mm from the top-left lobe edge,
+// placed by moving inward from the left-lobe peak along the lobe's inward
+// normal. Kept in world mm so it stays visually consistent across heart sizes.
+const HOLE_DIAMETER_MM = 3
+const HOLE_EDGE_MARGIN_MM = 3
 
 export const heartWithNameTemplate: TemplateDefinition = {
   id: 'heart-with-name',
@@ -33,9 +37,6 @@ export const heartWithNameTemplate: TemplateDefinition = {
     { kind: 'number', id: 'tolerance',    labelKey: 'controls.tolerance',    default: TOLERANCE_DEFAULT, min: TOLERANCE_MIN, max: TOLERANCE_MAX, step: TOLERANCE_STEP, unit: 'mm' },
 
     { kind: 'toggle', id: 'includeHole',   labelKey: 'controls.includeHole',   default: true },
-    { kind: 'number', id: 'holeDiameter',  labelKey: 'controls.holeDiameter',  default: 5, min: 2,  max: 15, step: 0.5, unit: 'mm', visibleWhen: whenHole },
-    { kind: 'number', id: 'holeMargin',    labelKey: 'controls.holeMargin',    default: 6, min: 2,  max: 30, step: 0.5, unit: 'mm', visibleWhen: whenHole },
-    { kind: 'number', id: 'holeXOffset',   labelKey: 'controls.holeXOffset',   default: 0, min: -30, max: 30, step: 0.5, unit: 'mm', visibleWhen: whenHole },
   ],
 
   presets: [
@@ -82,19 +83,26 @@ export const heartWithNameTemplate: TemplateDefinition = {
     const scriptRelief = Number(values.scriptRelief)
     const tolerance    = Number(values.tolerance)
     const includeHole  = Boolean(values.includeHole)
-    const holeDiameter = Number(values.holeDiameter)
-    const holeMargin   = Number(values.holeMargin)
-    const holeXOffset  = Number(values.holeXOffset ?? 0)
 
     const scriptFont = await loadFont(scriptFontName)
 
     let holeSpec: { x: number; y: number; radius: number } | undefined
     if (includeHole) {
-      // The interior boundary at x=0 is the top-center dip (heartDipY).
-      // Sit the hole safely below it so the whole hole is inside the material.
-      const dipY = heartDipY(heartSize)
-      const hy = dipY - holeMargin - holeDiameter / 2
-      holeSpec = { x: holeXOffset, y: hy, radius: holeDiameter / 2 }
+      // Left-lobe peak in raw parametric coords is at t = 7π/4 ≈ (-5.66, 11.6).
+      // Inward normal (pointing toward the lobe interior) is roughly
+      // (+0.15, -0.99). We keep the offset in WORLD mm so the hole sits the
+      // same physical distance from the edge regardless of heart size.
+      const k = heartSize / 32
+      const peakX = -5.66 * k
+      const peakY = 11.6 * k
+      const nx = 0.15
+      const ny = -0.99
+      const inward = HOLE_EDGE_MARGIN_MM + HOLE_DIAMETER_MM / 2
+      holeSpec = {
+        x: peakX + nx * inward,
+        y: peakY + ny * inward,
+        radius: HOLE_DIAMETER_MM / 2,
+      }
     }
 
     let heartGeom: BufferGeometry = heartPlateGeometry(heartSize, heartThk, holeSpec, CURVE_SEGMENTS_VISIBLE)
