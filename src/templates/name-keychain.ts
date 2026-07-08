@@ -4,7 +4,7 @@ import type { ControlValues, TemplateDefinition, ValidationIssue } from './types
 import { TOLERANCE_DEFAULT, TOLERANCE_MAX, TOLERANCE_MIN, TOLERANCE_STEP } from '@/lib/tolerance'
 import { loadFont } from '@/lib/fonts/loader'
 import { extrudeText } from '@/lib/geometry/text'
-import { subtract, unionAll } from '@/lib/geometry/csg'
+import { subtract } from '@/lib/geometry/csg'
 import { outlineTextShapes, shapesBounds, shiftShape } from '@/lib/geometry/offset'
 
 const OVERLAP = 0.4
@@ -159,29 +159,19 @@ export const nameKeychainTemplate: TemplateDefinition = {
 
     if (plateOutline) {
       // Letter-hugging outline: grow each glyph outward by `outlineWidth`.
+      // outlineTextShapes already 2D-unions the per-glyph polygons via
+      // polygon-clipping so overlapping letters fuse into one seamless region.
       const glyphShapes = font.generateShapes(text, textHeight)
       const b = shapesBounds(glyphShapes)
       const cx = (b.minX + b.maxX) / 2
       const cy = (b.minY + b.maxY) / 2
       for (const g of glyphShapes) shiftShape(g, -cx, -cy)
       const outlined = outlineTextShapes(glyphShapes, outlineWidth, 16)
-      if (mode === 'export' && outlined.length > 1) {
-        // Export: fuse per-glyph outlines with CSG union so the STL has no
-        // internal seams between overlapping letters and no side cracks from
-        // near-tangent contours.
-        const perGlyph = outlined.map((sh) => new ExtrudeGeometry(sh, {
-          depth: plateThickness,
-          curveSegments: CURVE_SEGMENTS_VISIBLE,
-          bevelEnabled: false,
-        }))
-        plateGeom = unionAll(perGlyph)
-      } else {
-        plateGeom = new ExtrudeGeometry(outlined, {
-          depth: plateThickness,
-          curveSegments: CURVE_SEGMENTS_VISIBLE,
-          bevelEnabled: false,
-        })
-      }
+      plateGeom = new ExtrudeGeometry(outlined, {
+        depth: plateThickness,
+        curveSegments: CURVE_SEGMENTS_VISIBLE,
+        bevelEnabled: false,
+      })
       plateMinX = -textWidth / 2 - outlineWidth
       plateMaxX =  textWidth / 2 + outlineWidth
       plateMidY = 0
@@ -203,7 +193,7 @@ export const nameKeychainTemplate: TemplateDefinition = {
     }
 
     // ── Keyring lobe (separate mesh, overlaps plate → slicer merges) ─────
-    let lobeGeom: BufferGeometry | undefined
+    let lobeGeom: BufferGeometry | undefined = undefined
     if (includeHole) {
       const holeR = holeDiameter / 2
       const lobeR = holeR + holeWall
@@ -222,12 +212,6 @@ export const nameKeychainTemplate: TemplateDefinition = {
     }
     // silence unused warning
     void CylinderGeometry
-
-    // ── Fuse lobe into plate for a single, seamless plate STL (export) ──
-    if (mode === 'export' && lobeGeom) {
-      plateGeom = unionAll([plateGeom, lobeGeom])
-      lobeGeom = undefined
-    }
 
     // ── Text-shaped registration pocket in the plate top (export only) ───
     if (mode === 'export' && textEmbed > 0) {

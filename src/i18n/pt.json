@@ -145,6 +145,11 @@
       }
     }
   },
+  "status": {
+    "loadingFonts": "Baixando fontes...",
+    "rendering": "Renderizando modelo...",
+    "downloadingStls": "Baixando STLs..."
+  },
   "actions": {
     "reset": "Restaurar padrões",
     "save": "Salvar design",

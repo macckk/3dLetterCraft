@@ -47,6 +47,26 @@ export const FONT_FILES: Record<string, string> = {
 const cache = new Map<string, Promise<Font>>()
 const loader = new TTFLoader()
 
+// ── Loading state — exposed so the UI can show "Baixando fontes..." while
+// any TTF is still in flight. Any font that has ever resolved is considered
+// cached and does not re-trigger the indicator.
+let inFlight = 0
+const listeners = new Set<(loading: boolean) => void>()
+
+function notify() {
+  const loading = inFlight > 0
+  for (const fn of listeners) fn(loading)
+}
+
+export function isLoadingFonts(): boolean {
+  return inFlight > 0
+}
+
+export function onFontLoadingChange(fn: (loading: boolean) => void): () => void {
+  listeners.add(fn)
+  return () => { listeners.delete(fn) }
+}
+
 export async function loadFont(name: string): Promise<Font> {
   const file = FONT_FILES[name]
   if (!file) throw new Error(`Font not registered: ${name}`)
@@ -54,6 +74,8 @@ export async function loadFont(name: string): Promise<Font> {
   let promise = cache.get(name)
   if (!promise) {
     const url = `${import.meta.env.BASE_URL}fonts/${file}`
+    inFlight++
+    notify()
     promise = new Promise<Font>((resolve, reject) => {
       loader.load(
         url,
@@ -64,6 +86,9 @@ export async function loadFont(name: string): Promise<Font> {
           reject(err instanceof Error ? err : new Error(`Failed to load font ${name}`))
         }
       )
+    }).finally(() => {
+      inFlight = Math.max(0, inFlight - 1)
+      notify()
     })
     cache.set(name, promise)
   }

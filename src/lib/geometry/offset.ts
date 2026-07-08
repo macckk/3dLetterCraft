@@ -1,5 +1,5 @@
-import { Shape, Vector2 } from 'three'
-import type { Path } from 'three'
+import { Path, Shape, Vector2 } from 'three'
+import polygonClipping from 'polygon-clipping'
 
 /**
  * Signed area of a closed polygon. Positive = CCW winding.
@@ -64,13 +64,6 @@ function offsetPolygon(pts: Vector2[], d: number): Vector2[] {
   return out
 }
 
-function polygonToShape(pts: Vector2[]): Shape {
-  const s = new Shape()
-  s.moveTo(pts[0].x, pts[0].y)
-  for (let i = 1; i < pts.length; i++) s.lineTo(pts[i].x, pts[i].y)
-  return s
-}
-
 /**
  * Grow each glyph shape by `d` mm outward. Outer contours are pushed outward,
  * inner holes (letter counters like the loop of 'o') shrink inward. A hole
@@ -83,17 +76,45 @@ export function outlineTextShapes(
   divisions = 16,
 ): Shape[] {
   if (d <= 0) return glyphs.map((g) => g.clone() as Shape)
-  const result: Shape[] = []
+  // 1) Offset each glyph outline outward and drop the letter counters so 'o',
+  //    'e', 'a' render as solid blobs (the classic outline-keychain look).
+  const grown: Vector2[][] = []
   for (const g of glyphs) {
     const outerPts = g.getPoints(divisions)
     if (outerPts.length < 3) continue
     const grownOuter = offsetPolygon(outerPts, d)
     if (Math.sign(signedArea(outerPts)) !== Math.sign(signedArea(grownOuter))) continue
-    // Fill the letter counters (interior of 'o', 'e', etc.) by dropping holes.
-    // The classic "outline keychain" look expects a solid plate under each glyph.
-    result.push(polygonToShape(grownOuter))
+    grown.push(grownOuter)
   }
-  return result
+  if (grown.length === 0) return []
+  // 2) 2D-union the overlapping offset polygons (adjacent cursive letters share
+  //    ink) so the resulting plate is a single seamless region — no internal
+  //    walls, no side cracks in the exported STL. polygon-clipping is O(n log n)
+  //    and finishes in a handful of ms even for long names.
+  const rings = grown.map<[number, number][][]>((poly) => [poly.map((p) => [p.x, p.y] as [number, number])])
+  const merged = polygonClipping.union(rings[0], ...rings.slice(1))
+  const shapes: Shape[] = []
+  for (const multi of merged) {
+    if (multi.length === 0) continue
+    const outer = multi[0]
+    if (outer.length < 3) continue
+    const shape = new Shape()
+    shape.moveTo(outer[0][0], outer[0][1])
+    for (let i = 1; i < outer.length; i++) shape.lineTo(outer[i][0], outer[i][1])
+    // Any holes reported by the union are actual regions surrounded by ink —
+    // preserve them so, e.g., the plate matches the negative space between
+    // letters correctly.
+    for (let h = 1; h < multi.length; h++) {
+      const hole = multi[h]
+      if (hole.length < 3) continue
+      const path = new Path()
+      path.moveTo(hole[0][0], hole[0][1])
+      for (let i = 1; i < hole.length; i++) path.lineTo(hole[i][0], hole[i][1])
+      shape.holes.push(path)
+    }
+    shapes.push(shape)
+  }
+  return shapes
 }
 
 /**

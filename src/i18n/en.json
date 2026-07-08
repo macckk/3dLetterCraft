@@ -145,6 +145,11 @@
       }
     }
   },
+  "status": {
+    "loadingFonts": "Downloading fonts...",
+    "rendering": "Rendering model...",
+    "downloadingStls": "Preparing STLs..."
+  },
   "actions": {
     "reset": "Reset",
     "save": "Save design",

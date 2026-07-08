@@ -14,6 +14,7 @@ export function TopBar() {
   const templateId = useDesignStore((s) => s.templateId)
   const values = useDesignStore((s) => s.values)
   const [copied, setCopied] = useState(false)
+  const [downloading, setDownloading] = useState(false)
 
   function toggleLang() {
     const next = i18n.language.startsWith('pt') ? 'en' : 'pt'
@@ -36,7 +37,12 @@ export function TopBar() {
   async function download() {
     const tpl = getTemplate(templateId)
     if (!tpl) return
-    const group = await Promise.resolve(tpl.build({ values, t, mode: 'export' }))
+    setDownloading(true)
+    // Let the browser paint the "Baixando STLs..." state before we start
+    // the (potentially heavy) synchronous CSG / extrusion work.
+    await new Promise((r) => setTimeout(r, 30))
+    try {
+      const group = await Promise.resolve(tpl.build({ values, t, mode: 'export' }))
     // Template inputs use `name` or `text` depending on the template; fall back
     // to `initial1+initial2` for couple initials.
     const raw =
@@ -47,19 +53,22 @@ export function TopBar() {
         : undefined) ??
       'design'
     const safeName = String(raw).trim().replace(/[^\w\-]+/g, '_') || 'design'
-    if (tpl.getExportables) {
-      // Sequential download with a small delay — Chrome silently blocks
-      // multiple downloads fired in the same tick.
-      const parts = tpl.getExportables(group)
-      for (let i = 0; i < parts.length; i++) {
-        const part = parts[i]
-        exportSTL(part.object, `${safeName}-${part.label}.stl`)
-        if (i < parts.length - 1) await new Promise((r) => setTimeout(r, 350))
+      if (tpl.getExportables) {
+        // Sequential download with a small delay — Chrome silently blocks
+        // multiple downloads fired in the same tick.
+        const parts = tpl.getExportables(group)
+        for (let i = 0; i < parts.length; i++) {
+          const part = parts[i]
+          exportSTL(part.object, `${safeName}-${part.label}.stl`)
+          if (i < parts.length - 1) await new Promise((r) => setTimeout(r, 350))
+        }
+      } else {
+        exportSTL(group, `${safeName}.stl`)
       }
-    } else {
-      exportSTL(group, `${safeName}.stl`)
+      trackEvent('download_stl', { templateId })
+    } finally {
+      setDownloading(false)
     }
-    trackEvent('download_stl', { templateId })
   }
 
   return (
@@ -93,9 +102,13 @@ export function TopBar() {
             </button>
             <button
               onClick={download}
-              className="text-sm px-3 py-1.5 rounded bg-indigo-500 hover:bg-indigo-400 text-white font-medium"
+              disabled={downloading}
+              className="text-sm px-3 py-1.5 rounded bg-indigo-500 hover:bg-indigo-400 text-white font-medium disabled:opacity-70 disabled:cursor-wait inline-flex items-center gap-2"
             >
-              {t('nav.download')}
+              {downloading && (
+                <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              )}
+              {downloading ? t('status.downloadingStls') : t('nav.download')}
             </button>
           </>
         )}

@@ -5,6 +5,7 @@ import type { Group } from 'three'
 import { getTemplate } from '@/templates/registry'
 import { useDesignStore } from '@/store/design'
 import { useTranslation } from 'react-i18next'
+import { isLoadingFonts, onFontLoadingChange } from '@/lib/fonts/loader'
 
 export function Viewer3D() {
   const templateId = useDesignStore((s) => s.templateId)
@@ -14,6 +15,9 @@ export function Viewer3D() {
   const [group, setGroup] = useState<Group | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [fontsLoading, setFontsLoading] = useState<boolean>(isLoadingFonts())
+
+  useEffect(() => onFontLoadingChange(setFontsLoading), [])
 
   useEffect(() => {
     const tpl = getTemplate(templateId)
@@ -70,9 +74,10 @@ export function Viewer3D() {
         <OrbitControls makeDefault target={[0, 80, 0]} />
       </Canvas>
 
-      {loading && (
-        <div className="absolute top-3 left-3 text-xs text-neutral-400 bg-neutral-900/80 rounded px-2 py-1">
-          …
+      {(loading || fontsLoading) && (
+        <div className="absolute top-3 left-3 text-xs text-neutral-200 bg-neutral-900/85 rounded px-3 py-1.5 flex items-center gap-2 shadow-lg border border-neutral-700">
+          <span className="inline-block w-3 h-3 border-2 border-neutral-400 border-t-transparent rounded-full animate-spin" />
+          <span>{fontsLoading ? t('status.loadingFonts') : t('status.rendering')}</span>
         </div>
       )}
       {error && (
