@@ -73,71 +73,81 @@ function pathsToShapes(paths: CPaths): Shape[] {
   return shapes
 }
 
+function shapesToClipperPaths(shapes: Shape[], divisions: number): CPaths {
+  const paths: CPaths = []
+  for (const g of shapes) {
+    const p = shapeToClipperPath(g, divisions)
+    if (p) paths.push(p)
+  }
+  return paths
+}
+
+function clipperUnion(paths: CPaths): CPaths {
+  if (paths.length === 0) return []
+  if (paths.length === 1) return paths
+  const clipper = new ClipperLib.Clipper()
+  clipper.AddPaths(paths, ClipperLib.PolyType.ptSubject, true)
+  const solution: CPaths = []
+  clipper.Execute(
+    ClipperLib.ClipType.ctUnion,
+    solution,
+    ClipperLib.PolyFillType.pftNonZero,
+    ClipperLib.PolyFillType.pftNonZero,
+  )
+  return solution
+}
+
+function clipperOffset(paths: CPaths, deltaMm: number): CPaths {
+  if (paths.length === 0 || deltaMm === 0) return paths
+  const co = new ClipperLib.ClipperOffset(2, 0.25 * SCALE)
+  co.AddPaths(paths, ClipperLib.JoinType.jtRound, ClipperLib.EndType.etClosedPolygon)
+  const solution: CPaths = []
+  co.Execute(solution, deltaMm * SCALE)
+  return solution
+}
+
 /**
- * Grow each glyph outline by exactly `d` mm using Clipper's polygon offsetter,
- * then union everything into one seamless region, and shrink back the tiny
- * closing buffer used to guarantee the union fuses touching / almost-touching
- * strokes (script swashes, i-dots, disconnected letter parts).
+ * Merged text silhouette: every glyph outline fused into one seamless region.
+ * Uses a small morphological closing (grow by BUFFER → union → shrink by
+ * BUFFER) so touching cursive glyphs whose outlines only share an edge fuse
+ * into the same polygon. Letter counters ('o', 'e' interiors) are filled —
+ * the classic outline-keychain look expects a solid silhouette under each
+ * letter.
  *
- * Clipper handles the round joins, self-intersections and hole topology
- * correctly — my hand-rolled vertex-bisector offset would produce spikes and
- * bumps at concave corners here.
+ * This is the shape that must be used both as the outline base (grown
+ * outward for the plate rim) and as the recessed-pocket cutter (at zero
+ * offset for a perfectly-fitting seat) so the cavity in the plate is one
+ * continuous shape instead of showing internal seams between letters.
  */
+export function mergeTextShapes(glyphs: Shape[], divisions = 24): Shape[] {
+  const paths = shapesToClipperPaths(glyphs, divisions)
+  if (paths.length === 0) return []
+  const BUFFER = 1.2
+  const grown = clipperOffset(paths, BUFFER)
+  const unioned = clipperUnion(grown)
+  const shrunk = clipperOffset(unioned, -BUFFER)
+  return pathsToShapes(shrunk)
+}
+
+/**
+ * Grow each Shape outline by `d` mm using Clipper — round joins, no spikes,
+ * no bumps at concave corners. Also drops letter counters via pathsToShapes.
+ * Used to expand the merged text silhouette into the outline plate rim.
+ */
+export function growShapes(shapes: Shape[], d: number, divisions = 24): Shape[] {
+  if (d <= 0) return shapes.map((s) => s.clone() as Shape)
+  const paths = shapesToClipperPaths(shapes, divisions)
+  const grown = clipperOffset(paths, d)
+  return pathsToShapes(grown)
+}
+
+/** @deprecated Use mergeTextShapes + growShapes explicitly. Kept for the
+ *  old call sites; internally does the same as merge → grow. */
 export function outlineTextShapes(
   glyphs: Shape[],
   d: number,
   divisions = 24,
 ): Shape[] {
-  if (d <= 0) return glyphs.map((g) => g.clone() as Shape)
-
-  // 1) Convert glyphs → Clipper integer paths.
-  const paths: CPaths = []
-  for (const g of glyphs) {
-    const p = shapeToClipperPath(g, divisions)
-    if (p) paths.push(p)
-  }
-  if (paths.length === 0) return []
-
-  // 2) Grow by (d + CLOSING) using round joins so we never introduce spikes.
-  //    CLOSING = 1.2 mm — larger than any gap between adjacent cursive glyphs
-  //    (i-dot to i-body, script swashes barely touching) so the subsequent
-  //    union guaranteed-fuses everything into a single region.
-  const CLOSING = 1.2
-  const growDelta = (d + CLOSING) * SCALE
-  const grownPaths: CPaths = []
-  {
-    const co = new ClipperLib.ClipperOffset(2, 0.25 * SCALE)
-    co.AddPaths(paths, ClipperLib.JoinType.jtRound, ClipperLib.EndType.etClosedPolygon)
-    co.Execute(grownPaths, growDelta)
-  }
-  if (grownPaths.length === 0) return []
-
-  // 3) Union all grown paths into one region.
-  let unioned: CPaths = grownPaths
-  if (grownPaths.length > 1) {
-    const clipper = new ClipperLib.Clipper()
-    clipper.AddPaths(grownPaths, ClipperLib.PolyType.ptSubject, true)
-    const solution: CPaths = []
-    clipper.Execute(
-      ClipperLib.ClipType.ctUnion,
-      solution,
-      ClipperLib.PolyFillType.pftNonZero,
-      ClipperLib.PolyFillType.pftNonZero,
-    )
-    unioned = solution
-  }
-  if (unioned.length === 0) return []
-
-  // 4) Shrink by CLOSING so the outline width matches what the user asked for.
-  const shrunk: CPaths = []
-  {
-    const co = new ClipperLib.ClipperOffset(2, 0.25 * SCALE)
-    co.AddPaths(unioned, ClipperLib.JoinType.jtRound, ClipperLib.EndType.etClosedPolygon)
-    co.Execute(shrunk, -CLOSING * SCALE)
-  }
-  if (shrunk.length === 0) return []
-
-  // 5) Back to three.js Shapes (outer contours only — letter counters stay
-  //    filled for the classic outline-keychain look).
-  return pathsToShapes(shrunk)
+  const merged = mergeTextShapes(glyphs, divisions)
+  return growShapes(merged, d, divisions)
 }

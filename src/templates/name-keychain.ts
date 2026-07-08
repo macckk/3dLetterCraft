@@ -5,7 +5,7 @@ import { TOLERANCE_DEFAULT, TOLERANCE_MAX, TOLERANCE_MIN, TOLERANCE_STEP } from 
 import { loadFont } from '@/lib/fonts/loader'
 import { extrudeText } from '@/lib/geometry/text'
 import { subtract } from '@/lib/geometry/csg'
-import { outlineTextShapes, shapesBounds, shiftShape } from '@/lib/geometry/offset'
+import { growShapes, mergeTextShapes, shapesBounds, shiftShape } from '@/lib/geometry/offset'
 
 const OVERLAP = 0.4
 const CURVE_SEGMENTS_VISIBLE = 24
@@ -157,16 +157,18 @@ export const nameKeychainTemplate: TemplateDefinition = {
     let plateGeom: BufferGeometry
     let plateMinX: number, plateMaxX: number, plateMidY: number
 
+    // The merged silhouette of the text — outline mode also uses this as the
+    // cavity cutter so the embed pocket in the plate is one seamless shape
+    // (no internal walls between adjacent cursive letters).
+    let mergedSilhouette: import('three').Shape[] | null = null
     if (plateOutline) {
-      // Letter-hugging outline: grow each glyph outward by `outlineWidth`.
-      // outlineTextShapes already 2D-unions the per-glyph polygons via
-      // polygon-clipping so overlapping letters fuse into one seamless region.
       const glyphShapes = font.generateShapes(text, textHeight)
       const b = shapesBounds(glyphShapes)
       const cx = (b.minX + b.maxX) / 2
       const cy = (b.minY + b.maxY) / 2
       for (const g of glyphShapes) shiftShape(g, -cx, -cy)
-      const outlined = outlineTextShapes(glyphShapes, outlineWidth, 16)
+      mergedSilhouette = mergeTextShapes(glyphShapes, 24)
+      const outlined = growShapes(mergedSilhouette, outlineWidth, 24)
       plateGeom = new ExtrudeGeometry(outlined, {
         depth: plateThickness,
         curveSegments: CURVE_SEGMENTS_VISIBLE,
@@ -215,16 +217,33 @@ export const nameKeychainTemplate: TemplateDefinition = {
 
     // ── Text-shaped registration pocket in the plate top (export only) ───
     if (mode === 'export' && textEmbed > 0) {
-      const cutter = extrudeText(text, font, {
-        size: textHeight,
-        depth: textEmbed + OVERLAP,
-        curveSegments: CURVE_SEGMENTS_CUTTER,
-      })
-      if (tolerance > 0) {
-        const cb = new Box3().setFromBufferAttribute(cutter.attributes.position as never)
-        const avgHalfExtent = (cb.max.x - cb.min.x + cb.max.y - cb.min.y) / 4
-        const scaleXY = 1 + tolerance / Math.max(avgHalfExtent, 1)
-        cutter.scale(scaleXY, scaleXY, 1)
+      let cutter: BufferGeometry
+      if (mergedSilhouette && mergedSilhouette.length > 0) {
+        // Outline mode: use the merged silhouette as the cutter so the pocket
+        // is one seamless cavity (adjacent cursive letters share one wall,
+        // no internal ridges between them). Grow by `tolerance` mm — Clipper
+        // does uniform outward offset per contour, unlike a naïve XY scale.
+        const cutterShapes = tolerance > 0
+          ? growShapes(mergedSilhouette, tolerance, 24)
+          : mergedSilhouette
+        cutter = new ExtrudeGeometry(cutterShapes, {
+          depth: textEmbed + OVERLAP,
+          curveSegments: CURVE_SEGMENTS_CUTTER,
+          bevelEnabled: false,
+        })
+      } else {
+        // Rect mode: keep per-glyph cutter (letters aren't merged in this mode).
+        cutter = extrudeText(text, font, {
+          size: textHeight,
+          depth: textEmbed + OVERLAP,
+          curveSegments: CURVE_SEGMENTS_CUTTER,
+        })
+        if (tolerance > 0) {
+          const cb = new Box3().setFromBufferAttribute(cutter.attributes.position as never)
+          const avgHalfExtent = (cb.max.x - cb.min.x + cb.max.y - cb.min.y) / 4
+          const scaleXY = 1 + tolerance / Math.max(avgHalfExtent, 1)
+          cutter.scale(scaleXY, scaleXY, 1)
+        }
       }
       const cutMatrix = new Matrix4().makeTranslation(0, 0, plateThickness - textEmbed)
       plateGeom = subtract(plateGeom, cutter, cutMatrix)
