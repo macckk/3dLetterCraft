@@ -1,4 +1,4 @@
-import { Shape, Vector2 } from 'three'
+import { Path, Shape, Vector2 } from 'three'
 import ClipperLib from 'clipper-lib'
 
 // Clipper uses integer coordinates. We work in mm; scale by 1000 → micrometres.
@@ -45,8 +45,7 @@ export function shiftShape(shape: Shape, dx: number, dy: number): void {
   for (const hole of shape.holes) shiftCurves(hole.curves)
 }
 
-function shapeToClipperPath(shape: Shape, divisions: number): CPath | null {
-  const pts = shape.getPoints(divisions)
+function ptsToClipperPath(pts: Vector2[]): CPath | null {
   if (pts.length < 3) return null
   const path: CPath = pts.map((p) => ({
     X: Math.round(p.x * SCALE),
@@ -58,17 +57,83 @@ function shapeToClipperPath(shape: Shape, divisions: number): CPath | null {
   return path
 }
 
+function shapeToClipperPath(shape: Shape, divisions: number): CPath | null {
+  return ptsToClipperPath(shape.getPoints(divisions))
+}
+
+/** Extract every ring in a Shape (outer contour + inner holes / counters) as
+ *  Clipper paths, preserving the winding Clipper needs (outer CCW, hole CW). */
+function shapeToClipperPathsAll(shape: Shape, divisions: number): CPaths {
+  const paths: CPaths = []
+  const outer = shapeToClipperPath(shape, divisions)
+  if (outer) paths.push(outer)
+  for (const hole of shape.holes) {
+    const p = ptsToClipperPath(hole.getPoints(divisions))
+    if (p) paths.push(p)
+  }
+  return paths
+}
+
+function cpathToShape(path: CPath): Shape | null {
+  if (path.length < 3) return null
+  const shape = new Shape()
+  shape.moveTo(path[0].X / SCALE, path[0].Y / SCALE)
+  for (let i = 1; i < path.length; i++) shape.lineTo(path[i].X / SCALE, path[i].Y / SCALE)
+  return shape
+}
+
 function pathsToShapes(paths: CPaths): Shape[] {
   // Discard any inner-hole rings that Clipper marks with negative orientation;
   // the outline-keychain plate is meant to be solid under each letter.
-  const outer = paths.filter((p) => ClipperLib.Clipper.Orientation(p))
   const shapes: Shape[] = []
-  for (const path of outer) {
-    if (path.length < 3) continue
-    const shape = new Shape()
-    shape.moveTo(path[0].X / SCALE, path[0].Y / SCALE)
-    for (let i = 1; i < path.length; i++) shape.lineTo(path[i].X / SCALE, path[i].Y / SCALE)
-    shapes.push(shape)
+  for (const path of paths) {
+    if (!ClipperLib.Clipper.Orientation(path)) continue
+    const s = cpathToShape(path)
+    if (s) shapes.push(s)
+  }
+  return shapes
+}
+
+/**
+ * Convert Clipper paths into three.js Shapes preserving hole topology. Uses
+ * Clipper's PolyTree output so each hole gets nested inside the outer contour
+ * that contains it — critical for the cavity cutter, where the letter counters
+ * ('o', 'e' interiors) must remain as holes so the plate keeps counter pillars.
+ */
+function pathsToShapesWithHoles(paths: CPaths): Shape[] {
+  const shapes: Shape[] = []
+  const outers = paths.filter((p) => ClipperLib.Clipper.Orientation(p))
+  const holes = paths.filter((p) => !ClipperLib.Clipper.Orientation(p))
+  // Assign each hole to the smallest outer contour that contains its first
+  // point (handles nested outers correctly).
+  const outerArea = new Map<CPath, number>()
+  for (const o of outers) outerArea.set(o, Math.abs(ClipperLib.Clipper.Area(o)))
+  const outerToHoles = new Map<CPath, CPath[]>()
+  for (const o of outers) outerToHoles.set(o, [])
+  for (const h of holes) {
+    if (h.length < 3) continue
+    const p = h[0]
+    let best: CPath | null = null
+    let bestArea = Infinity
+    for (const o of outers) {
+      if (ClipperLib.Clipper.PointInPolygon(p, o) !== 0) {
+        const a = outerArea.get(o) ?? Infinity
+        if (a < bestArea) { bestArea = a; best = o }
+      }
+    }
+    if (best) outerToHoles.get(best)!.push(h)
+  }
+  for (const o of outers) {
+    const s = cpathToShape(o)
+    if (!s) continue
+    for (const h of outerToHoles.get(o) ?? []) {
+      if (h.length < 3) continue
+      const path = new Path()
+      path.moveTo(h[0].X / SCALE, h[0].Y / SCALE)
+      for (let i = 1; i < h.length; i++) path.lineTo(h[i].X / SCALE, h[i].Y / SCALE)
+      s.holes.push(path)
+    }
+    shapes.push(s)
   }
   return shapes
 }
@@ -130,6 +195,54 @@ export function mergeTextShapes(glyphs: Shape[], divisions = 24): Shape[] {
 }
 
 /**
+ * Same as mergeTextShapes but keeps the letter counters ('o', 'e' interiors)
+ * as holes in the resulting Shapes. This is the correct cutter for a recessed
+ * embed pocket: subtracting it from the plate produces one continuous cavity
+ * around the whole word AND leaves upright pillars where the letter counters
+ * are — so the raised text piece drops in flush and the plate keeps the
+ * "island" that shows through the 'o'/'e' rings.
+ */
+export function mergeTextShapesWithCounters(glyphs: Shape[], divisions = 24): Shape[] {
+  // Feed every ring of every glyph (outer + counters) into Clipper.
+  const subjects: CPaths = []
+  for (const g of glyphs) subjects.push(...shapeToClipperPathsAll(g, divisions))
+  if (subjects.length === 0) return []
+
+  // Same morphological closing as mergeTextShapes so touching cursive glyphs
+  // fuse — but applied ONLY to outer contours. Counters get unioned but not
+  // grown/shrunk so they stay at their original glyph positions.
+  const outers = subjects.filter((p) => ClipperLib.Clipper.Orientation(p))
+  const counters = subjects.filter((p) => !ClipperLib.Clipper.Orientation(p))
+  const BUFFER = 1.2
+  const grown = clipperOffset(outers, BUFFER)
+  const unionedOuter = clipperUnion(grown)
+  const shrunkOuter = clipperOffset(unionedOuter, -BUFFER)
+  if (shrunkOuter.length === 0) return []
+
+  // Union all counters — adjacent letters won't share counters but this
+  // normalises overlaps into non-self-intersecting Simple Features.
+  const unionedCounters = counters.length > 0 ? clipperUnion(counters) : []
+
+  // Subtract counters from the merged outer so Clipper reports them as holes
+  // in the final PolyTree — nesting is then reconstructed by pathsToShapesWithHoles.
+  let combined: CPaths = shrunkOuter
+  if (unionedCounters.length > 0) {
+    const clipper = new ClipperLib.Clipper()
+    clipper.AddPaths(shrunkOuter, ClipperLib.PolyType.ptSubject, true)
+    clipper.AddPaths(unionedCounters, ClipperLib.PolyType.ptClip, true)
+    const solution: CPaths = []
+    clipper.Execute(
+      ClipperLib.ClipType.ctDifference,
+      solution,
+      ClipperLib.PolyFillType.pftNonZero,
+      ClipperLib.PolyFillType.pftNonZero,
+    )
+    combined = solution
+  }
+  return pathsToShapesWithHoles(combined)
+}
+
+/**
  * Grow each Shape outline by `d` mm using Clipper — round joins, no spikes,
  * no bumps at concave corners. Also drops letter counters via pathsToShapes.
  * Used to expand the merged text silhouette into the outline plate rim.
@@ -139,6 +252,20 @@ export function growShapes(shapes: Shape[], d: number, divisions = 24): Shape[] 
   const paths = shapesToClipperPaths(shapes, divisions)
   const grown = clipperOffset(paths, d)
   return pathsToShapes(grown)
+}
+
+/**
+ * Grow each Shape (outer contour + holes) by `d` mm, preserving hole
+ * topology. Positive `d` grows the outer outward (bigger cavity) and shrinks
+ * the holes toward their centre (smaller counter pillars) — exactly the
+ * clearance behaviour we need for a snug embed pocket.
+ */
+export function growShapesWithHoles(shapes: Shape[], d: number, divisions = 24): Shape[] {
+  if (d <= 0) return shapes.map((s) => s.clone() as Shape)
+  const allPaths: CPaths = []
+  for (const s of shapes) allPaths.push(...shapeToClipperPathsAll(s, divisions))
+  const grown = clipperOffset(allPaths, d)
+  return pathsToShapesWithHoles(grown)
 }
 
 /** @deprecated Use mergeTextShapes + growShapes explicitly. Kept for the

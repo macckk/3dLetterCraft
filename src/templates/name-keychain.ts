@@ -5,7 +5,14 @@ import { TOLERANCE_DEFAULT, TOLERANCE_MAX, TOLERANCE_MIN, TOLERANCE_STEP } from 
 import { loadFont } from '@/lib/fonts/loader'
 import { extrudeText } from '@/lib/geometry/text'
 import { subtract } from '@/lib/geometry/csg'
-import { growShapes, mergeTextShapes, shapesBounds, shiftShape } from '@/lib/geometry/offset'
+import {
+  growShapes,
+  growShapesWithHoles,
+  mergeTextShapes,
+  mergeTextShapesWithCounters,
+  shapesBounds,
+  shiftShape,
+} from '@/lib/geometry/offset'
 
 const OVERLAP = 0.4
 const CURVE_SEGMENTS_VISIBLE = 24
@@ -157,23 +164,29 @@ export const nameKeychainTemplate: TemplateDefinition = {
     let plateGeom: BufferGeometry
     let plateMinX: number, plateMaxX: number, plateMidY: number
 
-    // The merged silhouette of the text — outline mode also uses this as the
-    // cavity cutter so the embed pocket in the plate is one seamless shape
-    // (no internal walls between adjacent cursive letters).
-    let mergedSilhouette: import('three').Shape[] | null = null
+    // Outline mode also builds a "cavity cutter" silhouette that PRESERVES the
+    // letter counters (interior of 'o', 'e', 'a', ...) so the embed pocket in
+    // the plate keeps those counter pillars — otherwise a raised 'o' would
+    // drop into a solid recess and the pillar showing through the 'o' ring
+    // would be gone.
+    let cavitySilhouette: import('three').Shape[] | null = null
     if (plateOutline) {
       const glyphShapes = font.generateShapes(text, textHeight)
       const b = shapesBounds(glyphShapes)
       const cx = (b.minX + b.maxX) / 2
       const cy = (b.minY + b.maxY) / 2
       for (const g of glyphShapes) shiftShape(g, -cx, -cy)
-      mergedSilhouette = mergeTextShapes(glyphShapes, 24)
-      const outlined = growShapes(mergedSilhouette, outlineWidth, 24)
+      // Plate rim: solid silhouette (no counters) grown outward by outlineWidth.
+      const solidSilhouette = mergeTextShapes(glyphShapes, 24)
+      const outlined = growShapes(solidSilhouette, outlineWidth, 24)
       plateGeom = new ExtrudeGeometry(outlined, {
         depth: plateThickness,
         curveSegments: CURVE_SEGMENTS_VISIBLE,
         bevelEnabled: false,
       })
+      // Cavity cutter: same merged outer, but with the letter counters kept as
+      // holes so the plate keeps counter pillars (o, e, a...).
+      cavitySilhouette = mergeTextShapesWithCounters(glyphShapes, 24)
       plateMinX = -textWidth / 2 - outlineWidth
       plateMaxX =  textWidth / 2 + outlineWidth
       plateMidY = 0
@@ -218,14 +231,16 @@ export const nameKeychainTemplate: TemplateDefinition = {
     // ── Text-shaped registration pocket in the plate top (export only) ───
     if (mode === 'export' && textEmbed > 0) {
       let cutter: BufferGeometry
-      if (mergedSilhouette && mergedSilhouette.length > 0) {
-        // Outline mode: use the merged silhouette as the cutter so the pocket
-        // is one seamless cavity (adjacent cursive letters share one wall,
-        // no internal ridges between them). Grow by `tolerance` mm — Clipper
-        // does uniform outward offset per contour, unlike a naïve XY scale.
+      if (cavitySilhouette && cavitySilhouette.length > 0) {
+        // Outline mode: use the merged silhouette + counters as the cutter so
+        // the pocket is one seamless cavity (no internal ridges between
+        // adjacent cursive letters) AND the plate keeps upright pillars where
+        // the letter counters are ('o', 'e', 'a', ...). Positive Clipper
+        // offset grows the outer outward and shrinks the counter holes toward
+        // their centres — exactly the clearance behaviour we want.
         const cutterShapes = tolerance > 0
-          ? growShapes(mergedSilhouette, tolerance, 24)
-          : mergedSilhouette
+          ? growShapesWithHoles(cavitySilhouette, tolerance, 24)
+          : cavitySilhouette
         cutter = new ExtrudeGeometry(cutterShapes, {
           depth: textEmbed + OVERLAP,
           curveSegments: CURVE_SEGMENTS_CUTTER,
