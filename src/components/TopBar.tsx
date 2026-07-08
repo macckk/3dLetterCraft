@@ -37,10 +37,24 @@ export function TopBar() {
     const tpl = getTemplate(templateId)
     if (!tpl) return
     const group = await Promise.resolve(tpl.build({ values, t, mode: 'export' }))
-    const safeName = String(values.name ?? 'design').trim() || 'design'
+    // Template inputs use `name` or `text` depending on the template; fall back
+    // to `initial1+initial2` for couple initials.
+    const raw =
+      (values.text as string | undefined) ??
+      (values.name as string | undefined) ??
+      ((values.initial1 as string | undefined) && (values.initial2 as string | undefined)
+        ? `${values.initial1}${values.initial2}`
+        : undefined) ??
+      'design'
+    const safeName = String(raw).trim().replace(/[^\w\-]+/g, '_') || 'design'
     if (tpl.getExportables) {
-      for (const part of tpl.getExportables(group)) {
+      // Sequential download with a small delay — Chrome silently blocks
+      // multiple downloads fired in the same tick.
+      const parts = tpl.getExportables(group)
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i]
         exportSTL(part.object, `${safeName}-${part.label}.stl`)
+        if (i < parts.length - 1) await new Promise((r) => setTimeout(r, 350))
       }
     } else {
       exportSTL(group, `${safeName}.stl`)
