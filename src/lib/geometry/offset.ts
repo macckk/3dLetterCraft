@@ -1,0 +1,136 @@
+import { Path, Shape, Vector2 } from 'three'
+
+/**
+ * Signed area of a closed polygon. Positive = CCW winding.
+ */
+function signedArea(pts: Vector2[]): number {
+  let a = 0
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i]
+    const q = pts[(i + 1) % pts.length]
+    a += p.x * q.y - q.x * p.y
+  }
+  return a / 2
+}
+
+/**
+ * Offset a closed polygon perpendicular to its edges by `d`.
+ * Positive `d` grows CCW polygons outward (and CW polygons inward).
+ * Uses the vertex-bisector method — good enough for smooth text outlines;
+ * sharp corners are clamped so they can't spike.
+ */
+function offsetPolygon(pts: Vector2[], d: number): Vector2[] {
+  const n = pts.length
+  const ccw = signedArea(pts) > 0
+  const sign = ccw ? 1 : -1
+  const normals: Vector2[] = []
+  for (let i = 0; i < n; i++) {
+    const a = pts[i]
+    const b = pts[(i + 1) % n]
+    const dx = b.x - a.x, dy = b.y - a.y
+    const len = Math.hypot(dx, dy) || 1
+    normals.push(new Vector2(sign * dy / len, sign * -dx / len))
+  }
+  const out: Vector2[] = []
+  for (let i = 0; i < n; i++) {
+    const nIn = normals[(i - 1 + n) % n]
+    const nOut = normals[i]
+    let bx = nIn.x + nOut.x
+    let by = nIn.y + nOut.y
+    let bl = Math.hypot(bx, by)
+    if (bl < 1e-6) { bx = nOut.x; by = nOut.y; bl = 1 }
+    bx /= bl; by /= bl
+    // Clamp cos-of-half-angle so acute corners don't shoot out spikes.
+    const cos = Math.max(0.35, bx * nOut.x + by * nOut.y)
+    const scale = d / cos
+    out.push(new Vector2(pts[i].x + bx * scale, pts[i].y + by * scale))
+  }
+  return out
+}
+
+function polygonToShape(pts: Vector2[]): Shape {
+  const s = new Shape()
+  s.moveTo(pts[0].x, pts[0].y)
+  for (let i = 1; i < pts.length; i++) s.lineTo(pts[i].x, pts[i].y)
+  return s
+}
+
+function polygonToPath(pts: Vector2[]): Path {
+  const p = new Path()
+  p.moveTo(pts[0].x, pts[0].y)
+  for (let i = 1; i < pts.length; i++) p.lineTo(pts[i].x, pts[i].y)
+  return p
+}
+
+/**
+ * Grow each glyph shape by `d` mm outward. Outer contours are pushed outward,
+ * inner holes (letter counters like the loop of 'o') shrink inward. A hole
+ * that would collapse (self-intersect) is dropped from the output plate.
+ * Perfect for the classic "letter-hugging outline" keychain look.
+ */
+export function outlineTextShapes(
+  glyphs: Shape[],
+  d: number,
+  divisions = 16,
+): Shape[] {
+  if (d <= 0) return glyphs.map((g) => g.clone() as Shape)
+  const result: Shape[] = []
+  for (const g of glyphs) {
+    const outerPts = g.getPoints(divisions)
+    if (outerPts.length < 3) continue
+    const grownOuter = offsetPolygon(outerPts, d)
+    if (Math.sign(signedArea(outerPts)) !== Math.sign(signedArea(grownOuter))) continue
+    const newShape = polygonToShape(grownOuter)
+    for (const hole of g.holes) {
+      const holePts = hole.getPoints(divisions)
+      if (holePts.length < 3) continue
+      // Holes are the opposite winding of the outer contour; passing +d shrinks
+      // them toward the hole center. If the shrink flips the winding sign, the
+      // hole collapsed — drop it.
+      const shrunk = offsetPolygon(holePts, d)
+      if (Math.sign(signedArea(holePts)) !== Math.sign(signedArea(shrunk))) continue
+      newShape.holes.push(polygonToPath(shrunk))
+    }
+    result.push(newShape)
+  }
+  return result
+}
+
+/**
+ * Combined bounding box of a set of shapes (outer contours only — good enough
+ * for centering text glyphs).
+ */
+export function shapesBounds(shapes: Shape[]): { minX: number; maxX: number; minY: number; maxY: number } {
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+  for (const s of shapes) {
+    for (const p of s.getPoints(4)) {
+      if (p.x < minX) minX = p.x
+      if (p.x > maxX) maxX = p.x
+      if (p.y < minY) minY = p.y
+      if (p.y > maxY) maxY = p.y
+    }
+  }
+  return { minX, maxX, minY, maxY }
+}
+
+/**
+ * Translate every curve inside a Shape (contour + holes) by (dx, dy).
+ * Handles the LineCurve / QuadraticBezier / SplineCurve endpoints that
+ * three.js typography produces.
+ */
+export function shiftShape(shape: Shape, dx: number, dy: number): void {
+  const dv = new Vector2(dx, dy)
+  const shiftCurves = (curves: Path['curves']) => {
+    for (const c of curves) {
+      const anyC = c as unknown as Record<string, Vector2 | Vector2[] | undefined>
+      for (const key of ['v0', 'v1', 'v2', 'v3']) {
+        const p = anyC[key] as Vector2 | undefined
+        if (p && typeof (p as Vector2).x === 'number') p.add(dv)
+      }
+      const points = (c as unknown as { points?: Vector2[] }).points
+      if (Array.isArray(points)) for (const p of points) p.add(dv)
+    }
+  }
+  shiftCurves(shape.curves)
+  for (const hole of shape.holes) shiftCurves(hole.curves)
+}

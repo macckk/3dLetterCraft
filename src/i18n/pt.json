@@ -60,6 +60,9 @@
     "plateCornerR": "Raio dos cantos da plaquinha",
     "holeWall": "Parede em volta do furo",
     "holeOnRight": "Furo do lado direito",
+    "holeOverlap": "Sobreposição da aba na plaquinha",
+    "plateOutline": "Plaquinha contornando o texto",
+    "outlineWidth": "Espessura do contorno",
     "textEmbed": "Encaixe do texto na plaquinha",
     "text": "Texto",
     "color": "Cor",
@@ -76,7 +79,8 @@
   "fontGroups": {
     "serif": "Com serifa",
     "sans": "Sem serifa",
-    "script": "Cursiva"
+    "script": "Cursiva",
+    "display": "Display / bloco"
   },
   "presets": {
     "label": "Estilos rápidos"
@@ -132,11 +136,12 @@
     },
     "nameKeychain": {
       "name": "Chaveiro com nome",
-      "description": "Nome em relevo sobre plaquinha arredondada com furo para argola",
+      "description": "Nome em relevo com plaquinha (retangular ou contornando a fonte) e argola",
       "presets": {
-        "red": "Vermelho",
-        "black": "Preto",
-        "green": "Verde"
+        "red": "Vermelho retangular",
+        "pink": "Rosa contornado",
+        "black": "Preto retangular",
+        "green": "Verde retangular"
       }
     }
   },

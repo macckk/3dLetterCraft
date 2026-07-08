@@ -60,6 +60,9 @@
     "plateCornerR": "Plate corner radius",
     "holeWall": "Wall around hole",
     "holeOnRight": "Hole on right side",
+    "holeOverlap": "Tab overlap into plate",
+    "plateOutline": "Plate follows text outline",
+    "outlineWidth": "Outline thickness",
     "textEmbed": "Text embed into plate",
     "text": "Text",
     "color": "Color",
@@ -76,7 +79,8 @@
   "fontGroups": {
     "serif": "Serif",
     "sans": "Sans-serif",
-    "script": "Script"
+    "script": "Script",
+    "display": "Display / block"
   },
   "presets": {
     "label": "Quick styles"
@@ -132,11 +136,12 @@
     },
     "nameKeychain": {
       "name": "Name keychain",
-      "description": "Raised name on a rounded plate with a keyring hole",
+      "description": "Raised name with a plate (rectangular or letter-hugging) and keyring",
       "presets": {
-        "red": "Red",
-        "black": "Black",
-        "green": "Green"
+        "red": "Red rectangular",
+        "pink": "Pink outlined",
+        "black": "Black rectangular",
+        "green": "Green rectangular"
       }
     }
   },

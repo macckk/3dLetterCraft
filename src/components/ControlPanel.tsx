@@ -7,14 +7,15 @@ import { Validator } from './Validator'
 
 type FontGroup = { labelKey: string; fonts: string[] }
 
-const SERIF_GROUP:  FontGroup = { labelKey: 'fontGroups.serif',  fonts: ['Cardo', 'EB Garamond', 'PT Serif', 'Alegreya', 'Bitter'] }
-const SANS_GROUP:   FontGroup = { labelKey: 'fontGroups.sans',   fonts: ['Open Sans', 'Montserrat', 'Poppins', 'PT Sans', 'Bebas Neue'] }
-const SCRIPT_GROUP: FontGroup = { labelKey: 'fontGroups.script', fonts: ['Sacramento', 'Dancing Script', 'Pacifico', 'Kaushan Script', 'Allura'] }
+const SERIF_GROUP:  FontGroup = { labelKey: 'fontGroups.serif',  fonts: ['Cardo', 'EB Garamond', 'PT Serif', 'Alegreya', 'Bitter', 'Lora', 'Playfair Display', 'Merriweather', 'Cormorant Garamond', 'Libre Baskerville'] }
+const SANS_GROUP:   FontGroup = { labelKey: 'fontGroups.sans',   fonts: ['Open Sans', 'Montserrat', 'Poppins', 'PT Sans', 'Bebas Neue', 'Roboto', 'Raleway', 'Oswald', 'Anton', 'Nunito'] }
+const SCRIPT_GROUP: FontGroup = { labelKey: 'fontGroups.script', fonts: ['Sacramento', 'Dancing Script', 'Pacifico', 'Kaushan Script', 'Allura', 'Great Vibes', 'Satisfy', 'Caveat', 'Yellowtail', 'Marck Script'] }
+const DISPLAY_GROUP: FontGroup = { labelKey: 'fontGroups.display', fonts: ['Bangers', 'Fredoka', 'Righteous', 'Alfa Slab One', 'Bungee'] }
 
 const FONT_GROUPS: Record<'block' | 'serif' | 'script' | 'sans', FontGroup[]> = {
-  block:  [SERIF_GROUP, SANS_GROUP],
+  block:  [SERIF_GROUP, SANS_GROUP, DISPLAY_GROUP],
   serif:  [SERIF_GROUP],
-  sans:   [SANS_GROUP],
+  sans:   [SANS_GROUP, DISPLAY_GROUP],
   script: [SCRIPT_GROUP],
 }
 
