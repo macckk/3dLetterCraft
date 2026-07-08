@@ -73,16 +73,21 @@ function offsetPolygon(pts: Vector2[], d: number): Vector2[] {
 export function outlineTextShapes(
   glyphs: Shape[],
   d: number,
-  divisions = 16,
+  divisions = 32,
 ): Shape[] {
   if (d <= 0) return glyphs.map((g) => g.clone() as Shape)
+  // Small extra outward buffer to guarantee that abutting cursive glyphs
+  // (whose outlines only touch) overlap enough for the 2D union to fuse them.
+  // 0.15 mm is invisible on print but reliably closes seams.
+  const OVERLAP_EPS = 0.15
+  const growBy = d + OVERLAP_EPS
   // 1) Offset each glyph outline outward and drop the letter counters so 'o',
   //    'e', 'a' render as solid blobs (the classic outline-keychain look).
   const grown: Vector2[][] = []
   for (const g of glyphs) {
     const outerPts = g.getPoints(divisions)
     if (outerPts.length < 3) continue
-    const grownOuter = offsetPolygon(outerPts, d)
+    const grownOuter = offsetPolygon(outerPts, growBy)
     if (Math.sign(signedArea(outerPts)) !== Math.sign(signedArea(grownOuter))) continue
     grown.push(grownOuter)
   }
@@ -90,8 +95,17 @@ export function outlineTextShapes(
   // 2) 2D-union the overlapping offset polygons (adjacent cursive letters share
   //    ink) so the resulting plate is a single seamless region — no internal
   //    walls, no side cracks in the exported STL. polygon-clipping is O(n log n)
-  //    and finishes in a handful of ms even for long names.
-  const rings = grown.map<[number, number][][]>((poly) => [poly.map((p) => [p.x, p.y] as [number, number])])
+  //    and finishes in a handful of ms even for long names. We round coords to
+  //    3 decimals and close each ring explicitly — polygon-clipping is sensitive
+  //    to tiny floating-point mismatches at vertex-to-vertex touches.
+  const round3 = (v: number) => Math.round(v * 1000) / 1000
+  const rings: [number, number][][][] = grown.map((poly) => {
+    const ring: [number, number][] = poly.map((p) => [round3(p.x), round3(p.y)])
+    const [fx, fy] = ring[0]
+    const [lx, ly] = ring[ring.length - 1]
+    if (fx !== lx || fy !== ly) ring.push([fx, fy])
+    return [ring]
+  })
   const merged = polygonClipping.union(rings[0], ...rings.slice(1))
   const shapes: Shape[] = []
   for (const multi of merged) {
