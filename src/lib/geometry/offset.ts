@@ -203,43 +203,46 @@ export function mergeTextShapes(glyphs: Shape[], divisions = 24): Shape[] {
  * "island" that shows through the 'o'/'e' rings.
  */
 export function mergeTextShapesWithCounters(glyphs: Shape[], divisions = 24): Shape[] {
-  // Feed every ring of every glyph (outer + counters) into Clipper.
+  // Feed every ring of every glyph (outer + counters) into Clipper. Native
+  // winding is preserved — outer contours CCW, counter holes CW — which lets
+  // Clipper handle the topology correctly with the non-zero fill rule.
   const subjects: CPaths = []
   for (const g of glyphs) subjects.push(...shapeToClipperPathsAll(g, divisions))
   if (subjects.length === 0) return []
 
-  // Same morphological closing as mergeTextShapes so touching cursive glyphs
-  // fuse — but applied ONLY to outer contours. Counters get unioned but not
-  // grown/shrunk so they stay at their original glyph positions.
-  const outers = subjects.filter((p) => ClipperLib.Clipper.Orientation(p))
-  const counters = subjects.filter((p) => !ClipperLib.Clipper.Orientation(p))
-  const BUFFER = 1.2
-  const grown = clipperOffset(outers, BUFFER)
-  const unionedOuter = clipperUnion(grown)
-  const shrunkOuter = clipperOffset(unionedOuter, -BUFFER)
-  if (shrunkOuter.length === 0) return []
+  // Direct non-zero union: outer CCW paths add +1 winding, counter CW paths
+  // subtract 1. Only regions with nonzero net winding survive → the merged
+  // ink region of the whole word, with counters preserved as holes exactly
+  // where each glyph put them.
+  const clipper = new ClipperLib.Clipper()
+  clipper.AddPaths(subjects, ClipperLib.PolyType.ptSubject, true)
+  const initial: CPaths = []
+  clipper.Execute(
+    ClipperLib.ClipType.ctUnion,
+    initial,
+    ClipperLib.PolyFillType.pftNonZero,
+    ClipperLib.PolyFillType.pftNonZero,
+  )
+  if (initial.length === 0) return []
 
-  // Union all counters — adjacent letters won't share counters but this
-  // normalises overlaps into non-self-intersecting Simple Features.
-  const unionedCounters = counters.length > 0 ? clipperUnion(counters) : []
-
-  // Subtract counters from the merged outer so Clipper reports them as holes
-  // in the final PolyTree — nesting is then reconstructed by pathsToShapesWithHoles.
-  let combined: CPaths = shrunkOuter
-  if (unionedCounters.length > 0) {
-    const clipper = new ClipperLib.Clipper()
-    clipper.AddPaths(shrunkOuter, ClipperLib.PolyType.ptSubject, true)
-    clipper.AddPaths(unionedCounters, ClipperLib.PolyType.ptClip, true)
-    const solution: CPaths = []
-    clipper.Execute(
-      ClipperLib.ClipType.ctDifference,
-      solution,
-      ClipperLib.PolyFillType.pftNonZero,
-      ClipperLib.PolyFillType.pftNonZero,
-    )
-    combined = solution
-  }
-  return pathsToShapesWithHoles(combined)
+  // Small morphological closing to bridge any hair-thin gaps between cursive
+  // glyphs that merely touch instead of overlapping. Applied to BOTH outer
+  // contours and hole contours — Clipper's offset respects each ring's
+  // winding, so counters shrink then grow back symmetrically (net-neutral).
+  const BUFFER = 0.4
+  const grown = clipperOffset(initial, BUFFER)
+  const grownClipper = new ClipperLib.Clipper()
+  grownClipper.AddPaths(grown, ClipperLib.PolyType.ptSubject, true)
+  const grownUnion: CPaths = []
+  grownClipper.Execute(
+    ClipperLib.ClipType.ctUnion,
+    grownUnion,
+    ClipperLib.PolyFillType.pftNonZero,
+    ClipperLib.PolyFillType.pftNonZero,
+  )
+  const closed = clipperOffset(grownUnion, -BUFFER)
+  if (closed.length === 0) return pathsToShapesWithHoles(initial)
+  return pathsToShapesWithHoles(closed)
 }
 
 /**
