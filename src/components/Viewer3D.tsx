@@ -21,13 +21,14 @@ export function Viewer3D() {
 
   useEffect(() => {
     const tpl = getTemplate(templateId)
-    if (!tpl) return
+    const build = tpl?.build
+    if (!build) return
     let cancelled = false
     setLoading(true)
     setError(null)
     // Debounce so dragging sliders doesn't spam rebuilds.
     const timer = window.setTimeout(() => {
-      Promise.resolve(tpl.build({ values, t, mode: 'preview' }))
+      Promise.resolve(build({ values, t, mode: 'preview' }))
         .then((g) => { if (!cancelled) setGroup(g) })
         .catch((err) => { if (!cancelled) setError(String(err?.message ?? err)) })
         .finally(() => { if (!cancelled) setLoading(false) })
