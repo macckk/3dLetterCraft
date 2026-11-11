@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Viewer3D } from '@/components/Viewer3D'
+import { Viewer2D } from '@/components/Viewer2D'
 import { ControlPanel } from '@/components/ControlPanel'
 import { getTemplate } from '@/templates/registry'
 import { useDesignStore } from '@/store/design'
@@ -19,13 +20,16 @@ export function EditorPage() {
     if (templateId !== currentId) setTemplate(templateId)
   }, [templateId, currentId, setTemplate, navigate])
 
+  const tpl = getTemplate(templateId)
+  const is2D = tpl?.type === 'svg'
+
   return (
     <div className="flex-1 grid grid-cols-1 md:grid-cols-[320px_1fr] overflow-hidden">
       <aside className="border-r border-neutral-800 bg-neutral-900">
         <ControlPanel />
       </aside>
       <main className="min-w-0">
-        <Viewer3D />
+        {is2D ? <Viewer2D /> : <Viewer3D />}
       </main>
     </div>
   )

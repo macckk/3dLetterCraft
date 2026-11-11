@@ -7,7 +7,8 @@
   "nav": {
     "templates": "Templates",
     "myDesigns": "My designs",
-    "download": "Download STL"
+    "download": "Download STL",
+    "downloadTemplate": "Export"
   },
   "landing": {
     "headline": "Design 3D-printable name pieces",
@@ -74,7 +75,11 @@
     "stickCount": "Stick count",
     "stickWidth": "Stick width",
     "stickLength": "Stick length",
-    "stickSpacing": "Distance between sticks"
+    "stickSpacing": "Distance between sticks",
+    "boxWidth": "Internal width",
+    "boxDepth": "Internal depth",
+    "boxHeight": "Internal height",
+    "materialThickness": "Material thickness"
   },
   "fontGroups": {
     "serif": "Serif",
@@ -143,7 +148,21 @@
         "black": "Black rectangular",
         "green": "Green rectangular"
       }
+    },
+    "foldableBoxMailer": {
+      "name": "Foldable mailer box",
+      "description": "Tuck-top die-cut template for laser cutting — enter dimensions and export SVG/PDF/DXF",
+      "presets": {
+        "small": "Small (100×70×40)",
+        "medium": "Medium (200×150×80)",
+        "large": "Large (300×200×100)"
+      }
     }
+  },
+  "viewer2d": {
+    "cut": "Cut",
+    "score": "Score",
+    "fitToView": "Fit to view"
   },
   "status": {
     "loadingFonts": "Downloading fonts...",

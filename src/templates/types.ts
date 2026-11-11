@@ -1,5 +1,6 @@
 import type { Group } from 'three'
 import type { TFunction } from 'i18next'
+import type { BoxTemplate2D } from '@/lib/geometry/boxTemplate'
 
 export type ControlValues = Record<string, string | number | boolean>
 
@@ -48,16 +49,21 @@ export interface TemplatePreset {
 
 export interface TemplateDefinition {
   id: string
-  nameKey: string  // i18n key, e.g. "templates.nameWithScript.name"
+  nameKey: string
   descriptionKey: string
   thumbnail?: string
+  /**
+   * '3d' (default): Three.js geometry, exported as STL.
+   * 'svg': 2D die-cut template, exported as SVG/PDF/DXF.
+   */
+  type?: '3d' | 'svg'
   controls: ControlType[]
   presets?: TemplatePreset[]
   validate?: (values: ControlValues) => ValidationIssue[]
-  build: (ctx: BuildContext) => Promise<Group> | Group
-  /**
-   * Return one or more meshes labeled by color for exporting.
-   * MVP: STL export only; 3MF later.
-   */
+  /** Required for type '3d'. */
+  build?: (ctx: BuildContext) => Promise<Group> | Group
+  /** Return one or more meshes for STL export. */
   getExportables?: (group: Group) => { label: string; color: string; object: Group }[]
+  /** Required for type 'svg'. */
+  buildSVG?: (ctx: Omit<BuildContext, 'mode'>) => BoxTemplate2D
 }

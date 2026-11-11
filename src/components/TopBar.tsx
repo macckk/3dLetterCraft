@@ -1,9 +1,12 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router-dom'
 import { getTemplate } from '@/templates/registry'
 import { useDesignStore } from '@/store/design'
 import { exportSTL } from '@/lib/export/stl'
+import { downloadSVG } from '@/lib/export/svgExport'
+import { downloadDXF } from '@/lib/export/dxfExport'
+import { downloadPDF } from '@/lib/export/pdfExport'
 import { buildShareUrl } from '@/lib/share/url'
 import { trackEvent } from '@/analytics'
 
@@ -15,6 +18,8 @@ export function TopBar() {
   const values = useDesignStore((s) => s.values)
   const [copied, setCopied] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [svgMenuOpen, setSvgMenuOpen] = useState(false)
+  const svgMenuRef = useRef<HTMLDivElement>(null)
 
   function toggleLang() {
     const next = i18n.language.startsWith('pt') ? 'en' : 'pt'
@@ -36,26 +41,20 @@ export function TopBar() {
 
   async function download() {
     const tpl = getTemplate(templateId)
-    if (!tpl) return
+    if (!tpl || !tpl.build) return
     setDownloading(true)
-    // Let the browser paint the "Baixando STLs..." state before we start
-    // the (potentially heavy) synchronous CSG / extrusion work.
     await new Promise((r) => setTimeout(r, 30))
     try {
       const group = await Promise.resolve(tpl.build({ values, t, mode: 'export' }))
-    // Template inputs use `name` or `text` depending on the template; fall back
-    // to `initial1+initial2` for couple initials.
-    const raw =
-      (values.text as string | undefined) ??
-      (values.name as string | undefined) ??
-      ((values.initial1 as string | undefined) && (values.initial2 as string | undefined)
-        ? `${values.initial1}${values.initial2}`
-        : undefined) ??
-      'design'
-    const safeName = String(raw).trim().replace(/[^\w\-]+/g, '_') || 'design'
+      const raw =
+        (values.text as string | undefined) ??
+        (values.name as string | undefined) ??
+        ((values.initial1 as string | undefined) && (values.initial2 as string | undefined)
+          ? `${values.initial1}${values.initial2}`
+          : undefined) ??
+        'design'
+      const safeName = String(raw).trim().replace(/[^\w\-]+/g, '_') || 'design'
       if (tpl.getExportables) {
-        // Sequential download with a small delay — Chrome silently blocks
-        // multiple downloads fired in the same tick.
         const parts = tpl.getExportables(group)
         for (let i = 0; i < parts.length; i++) {
           const part = parts[i]
@@ -69,6 +68,18 @@ export function TopBar() {
     } finally {
       setDownloading(false)
     }
+  }
+
+  function downloadSVGTemplate(format: 'svg' | 'pdf' | 'dxf') {
+    const tpl = getTemplate(templateId)
+    if (!tpl?.buildSVG) return
+    setSvgMenuOpen(false)
+    const geo = tpl.buildSVG({ values, t })
+    const filename = `box-${Number(values.boxWidth)}x${Number(values.boxDepth)}x${Number(values.boxHeight)}`
+    if (format === 'svg') downloadSVG(geo, filename)
+    else if (format === 'dxf') downloadDXF(geo, filename)
+    else downloadPDF(geo, filename)
+    trackEvent('download_2d', { templateId, format })
   }
 
   return (
@@ -100,16 +111,44 @@ export function TopBar() {
             >
               {copied ? t('actions.shareCopied') : t('actions.share')}
             </button>
-            <button
-              onClick={download}
-              disabled={downloading}
-              className="text-sm px-3 py-1.5 rounded bg-indigo-500 hover:bg-indigo-400 text-white font-medium disabled:opacity-70 disabled:cursor-wait inline-flex items-center gap-2"
-            >
-              {downloading && (
-                <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              )}
-              {downloading ? t('status.downloadingStls') : t('nav.download')}
-            </button>
+            {getTemplate(templateId)?.type === 'svg' ? (
+              <div ref={svgMenuRef} className="relative">
+                <button
+                  onClick={() => setSvgMenuOpen((o) => !o)}
+                  className="text-sm px-3 py-1.5 rounded bg-indigo-500 hover:bg-indigo-400 text-white font-medium inline-flex items-center gap-1.5"
+                >
+                  {t('nav.downloadTemplate')}
+                  <span className="text-xs opacity-80">▾</span>
+                </button>
+                {svgMenuOpen && (
+                  <div
+                    className="absolute right-0 top-full mt-1 bg-neutral-800 border border-neutral-700 rounded shadow-lg z-50 min-w-[120px]"
+                    onMouseLeave={() => setSvgMenuOpen(false)}
+                  >
+                    {(['svg', 'pdf', 'dxf'] as const).map((fmt) => (
+                      <button
+                        key={fmt}
+                        onClick={() => downloadSVGTemplate(fmt)}
+                        className="w-full text-left px-3 py-2 text-sm text-neutral-200 hover:bg-neutral-700 uppercase tracking-wide"
+                      >
+                        {fmt.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={download}
+                disabled={downloading}
+                className="text-sm px-3 py-1.5 rounded bg-indigo-500 hover:bg-indigo-400 text-white font-medium disabled:opacity-70 disabled:cursor-wait inline-flex items-center gap-2"
+              >
+                {downloading && (
+                  <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                )}
+                {downloading ? t('status.downloadingStls') : t('nav.download')}
+              </button>
+            )}
           </>
         )}
       </div>

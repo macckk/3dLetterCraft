@@ -4,12 +4,13 @@
  */
 export function TemplateIcon({ id }: { id: string }) {
   switch (id) {
-    case 'name-with-script':  return <NameWithScriptIcon />
-    case 'couple-initials':   return <CoupleInitialsIcon />
-    case 'heart-with-name':   return <HeartWithNameIcon />
-    case 'cake-topper':       return <CakeTopperIcon />
-    case 'name-keychain':     return <NameKeychainIcon />
-    default:                  return <FallbackIcon />
+    case 'name-with-script':    return <NameWithScriptIcon />
+    case 'couple-initials':     return <CoupleInitialsIcon />
+    case 'heart-with-name':     return <HeartWithNameIcon />
+    case 'cake-topper':         return <CakeTopperIcon />
+    case 'name-keychain':       return <NameKeychainIcon />
+    case 'foldable-box-mailer': return <FoldableBoxIcon />
+    default:                    return <FallbackIcon />
   }
 }
 
@@ -107,6 +108,35 @@ function NameKeychainIcon() {
       >
         Name
       </text>
+    </svg>
+  )
+}
+
+function FoldableBoxIcon() {
+  return (
+    <svg viewBox={VIEW} className="w-full h-full">
+      {/* Flat die-cut template silhouette */}
+      {/* Lid panel */}
+      <rect x={60} y={18} width={80} height={38} rx={1} fill="none" stroke="#60a5fa" strokeWidth={2} />
+      {/* Tuck tabs */}
+      <rect x={78} y={10} width={16} height={10} rx={1} fill="none" stroke="#60a5fa" strokeWidth={2} />
+      <rect x={106} y={10} width={16} height={10} rx={1} fill="none" stroke="#60a5fa" strokeWidth={2} />
+      {/* Back wall */}
+      <rect x={60} y={56} width={80} height={22} rx={0} fill="none" stroke="#60a5fa" strokeWidth={2} />
+      {/* Bottom + side walls */}
+      <rect x={30} y={78} width={140} height={28} rx={0} fill="none" stroke="#60a5fa" strokeWidth={2} />
+      {/* Front wall */}
+      <rect x={60} y={106} width={80} height={22} rx={0} fill="none" stroke="#60a5fa" strokeWidth={2} />
+      {/* Score lines (dashed blue) */}
+      <line x1={60} y1={56} x2={140} y2={56} stroke="#3b82f6" strokeWidth={1.2} strokeDasharray="4,2" />
+      <line x1={60} y1={78} x2={140} y2={78} stroke="#3b82f6" strokeWidth={1.2} strokeDasharray="4,2" />
+      <line x1={60} y1={106} x2={140} y2={106} stroke="#3b82f6" strokeWidth={1.2} strokeDasharray="4,2" />
+      <line x1={60} y1={78} x2={60} y2={106} stroke="#3b82f6" strokeWidth={1.2} strokeDasharray="4,2" />
+      <line x1={140} y1={78} x2={140} y2={106} stroke="#3b82f6" strokeWidth={1.2} strokeDasharray="4,2" />
+      {/* 3D box hint (top right) */}
+      <rect x={130} y={30} width={34} height={26} rx={2} fill="#1e40af" opacity={0.6} />
+      <path d="M 130 30 L 142 20 L 176 20 L 176 46 L 164 56 L 164 30 Z" fill="#2563eb" opacity={0.5} />
+      <path d="M 130 30 L 142 20 L 176 20" fill="none" stroke="#93c5fd" strokeWidth={1} />
     </svg>
   )
 }

@@ -7,7 +7,8 @@
   "nav": {
     "templates": "Modelos",
     "myDesigns": "Meus designs",
-    "download": "Baixar STL"
+    "download": "Baixar STL",
+    "downloadTemplate": "Exportar"
   },
   "landing": {
     "headline": "Crie peças 3D com nomes e letras",
@@ -74,7 +75,11 @@
     "stickCount": "Número de palitos",
     "stickWidth": "Largura do palito",
     "stickLength": "Comprimento do palito",
-    "stickSpacing": "Distância entre palitos"
+    "stickSpacing": "Distância entre palitos",
+    "boxWidth": "Largura interna",
+    "boxDepth": "Profundidade interna",
+    "boxHeight": "Altura interna",
+    "materialThickness": "Espessura do material"
   },
   "fontGroups": {
     "serif": "Com serifa",
@@ -143,7 +148,21 @@
         "black": "Preto retangular",
         "green": "Verde retangular"
       }
+    },
+    "foldableBoxMailer": {
+      "name": "Caixa dobrável (mailer)",
+      "description": "Template de corte vinco para corte a laser — digite as dimensões e exporte SVG/PDF/DXF",
+      "presets": {
+        "small": "Pequena (100×70×40)",
+        "medium": "Média (200×150×80)",
+        "large": "Grande (300×200×100)"
+      }
     }
+  },
+  "viewer2d": {
+    "cut": "Corte",
+    "score": "Vinco",
+    "fitToView": "Ajustar à tela"
   },
   "status": {
     "loadingFonts": "Baixando fontes...",
