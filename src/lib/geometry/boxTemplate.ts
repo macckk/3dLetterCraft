@@ -17,122 +17,188 @@ export interface MailerBoxParams {
   thickness: number
 }
 
+function ellipseArc(
+  cx: number, cy: number,
+  rx: number, ry: number,
+  startAngle: number, endAngle: number,
+  steps: number,
+): Array<[number, number]> {
+  const pts: Array<[number, number]> = []
+  for (let i = 0; i <= steps; i++) {
+    const a = startAngle + (endAngle - startAngle) * (i / steps)
+    pts.push([cx + rx * Math.cos(a), cy + ry * Math.sin(a)])
+  }
+  return pts
+}
+
 export function computeMailerBox(p: MailerBoxParams): BoxTemplate2D {
   const { width: W, depth: D, height: H, thickness: T } = p
 
-  const Wo = W + 2 * T
-  const Do = D + 2 * T
-  const Ho = H + T
+  // Tuck tab sits at top of lid panel; angled sides, straight top
+  const tuck_h = Math.max(20, D * 0.75)
+  const tuck_inset = Math.max(4, T + 2)   // narrowing on each side
 
-  // Tuck tab dimensions
-  const tab_h = Math.max(15, H * 0.5)
-  const tab_w = Wo * 0.28
-  const tab_gap = Wo * 0.08
-  const tab_total = 2 * tab_w + tab_gap
-  const tab_x_offset = (Wo - tab_total) / 2
+  // Dust flaps: half-ellipse bulging outward from lid sides
+  const df_w = Math.max(12, D * 0.5)       // how far they extend outward
+  const df_ry = Math.min(D * 0.42, H * 0.4) // vertical half-radius
 
-  // Dust flap (attached to left/right sides of lid, folds inside the box)
-  const df_w = Math.max(5, D / 2 - T)
-  const df_h = Do - T
+  // Glue flap at bottom of back wall
+  const glue_h = Math.max(10, H * 0.3)
 
-  // Side wall width (= box height when folded up)
-  const sw_w = Ho
+  // Lock-slot notches on inner edges of side walls (rectangular cuts)
+  const lock_w = Math.min(14, D * 0.28)
+  const lock_h = T + 1.5
 
-  // X coordinates
-  const x_cl = sw_w
-  const x_cr = x_cl + Wo
+  // ── X layout ─────────────────────────────────────────────────────────────
+  // |  left side walls  |  center strip (W)  |  right side walls  |
+  //  x0                 x1                   x2                    x3
+  const x0 = 0
+  const x1 = D
+  const x2 = x1 + W
+  const x3 = x2 + D
 
-  // Tuck tab absolute x positions
-  const tab_x1_L = x_cl + tab_x_offset
-  const tab_x1_R = tab_x1_L + tab_w
-  const tab_x2_L = tab_x1_R + tab_gap
-  const tab_x2_R = tab_x2_L + tab_w
+  // ── Y layout ─────────────────────────────────────────────────────────────
+  // y0  ── top of tuck tab
+  // y1  ── bottom of tuck tab / top of lid panel
+  // y2  ── bottom of lid panel / top of front wall
+  // y3  ── bottom of front wall / top of bottom panel
+  // y4  ── bottom of bottom panel / top of back wall
+  // y5  ── bottom of back wall
+  // y6  ── bottom of glue flap
+  const y0 = 0
+  const y1 = tuck_h
+  const y2 = y1 + D
+  const y3 = y2 + H
+  const y4 = y3 + D
+  const y5 = y4 + H
+  const y6 = y5 + glue_h
 
-  // Y coordinates
-  const y0 = 0              // top of tuck tabs
-  const y1 = tab_h          // top of lid panel
-  const y2 = y1 + Do        // top of back wall
-  const y3 = y2 + Ho        // top of bottom panel
-  const y4 = y3 + Do        // top of front wall
-  const y5 = y4 + Ho        // bottom edge
+  const totalW = x3
+  const totalH = y6
 
-  // Lock slot dimensions (cut into front wall)
-  const slot_w = tab_w + 1
-  const slot_h = T + 0.5
-  const slot_y = y4 + 3
+  // Tuck tab x positions (slightly narrower than lid)
+  const tuck_xL = x1 + tuck_inset
+  const tuck_xR = x2 - tuck_inset
 
-  const totalW = 2 * sw_w + Wo
-  const totalH = y5
+  // Dust flap ellipse: centred horizontally in [y1, y2]
+  const df_cy = (y1 + y2) / 2
 
-  // Cut outline: clockwise from top-left of lid panel
-  const cutOutline: Array<[number, number]> = [
-    [x_cl, y1],
-    [tab_x1_L, y1],
-    [tab_x1_L, y0],
-    [tab_x1_R, y0],
-    [tab_x1_R, y1],
-    [tab_x2_L, y1],
-    [tab_x2_L, y0],
-    [tab_x2_R, y0],
-    [tab_x2_R, y1],
-    [x_cr, y1],
-    [x_cr, y2 - df_h],
-    [x_cr + df_w, y2 - df_h],
-    [x_cr + df_w, y2],
-    [x_cr, y2],
-    [x_cr, y3],
-    [x_cr + sw_w, y3],
-    [x_cr + sw_w, y4],
-    [x_cr, y4],
-    [x_cr, y5],
-    [x_cl, y5],
-    [x_cl, y4],
-    [x_cl - sw_w, y4],
-    [x_cl - sw_w, y3],
-    [x_cl, y3],
-    [x_cl, y2],
-    [x_cl - df_w, y2],
-    [x_cl - df_w, y2 - df_h],
-    [x_cl, y2 - df_h],
-  ]
+  // ── Main cut outline (clockwise from top-left of tuck tab) ───────────────
+  const pts: Array<[number, number]> = []
 
-  // Lock slots (rectangular cuts in front wall)
-  const slot1: Path2D = {
+  // 1. Top of tuck tab (angled from lid edge to tuck_xL/R, straight across)
+  pts.push([tuck_xL, y0])
+  pts.push([tuck_xR, y0])
+
+  // 2. Right angled side of tuck tab down to lid corner
+  pts.push([x2, y1])
+
+  // 3. Right dust flap: half-ellipse bulging right from x2
+  //    goes from (x2, y1) → arc → (x2, y2)
+  const dfPtsR = ellipseArc(x2, df_cy, df_w, df_ry, -Math.PI / 2, Math.PI / 2, 10)
+  for (const pt of dfPtsR) pts.push(pt)
+
+  // 4. Right edge of lid down to front wall level (already at x2 after arc)
+  pts.push([x2, y2])
+
+  // 5. Top of right front side wall
+  pts.push([x3, y2])
+
+  // 6. Right edge and bottom of right front side wall
+  pts.push([x3, y3])
+  pts.push([x2, y3])
+
+  // 7. Right edge of bottom panel (no extension) down to back wall
+  pts.push([x2, y4])
+
+  // 8. Top of right back side wall
+  pts.push([x3, y4])
+
+  // 9. Right edge and bottom of right back side wall
+  pts.push([x3, y5])
+  pts.push([x2, y5])
+
+  // 10. Right side of glue flap
+  pts.push([x2, y6])
+
+  // 11. Bottom of glue flap
+  pts.push([x1, y6])
+
+  // 12. Left side of glue flap back up
+  pts.push([x1, y5])
+
+  // 13. Bottom and left edge of left back side wall
+  pts.push([x0, y5])
+  pts.push([x0, y4])
+
+  // 14. Top of left back side wall
+  pts.push([x1, y4])
+
+  // 15. Left edge of bottom panel up
+  pts.push([x1, y3])
+
+  // 16. Bottom and left edge of left front side wall
+  pts.push([x0, y3])
+  pts.push([x0, y2])
+
+  // 17. Top of left front side wall
+  pts.push([x1, y2])
+
+  // 18. Left dust flap: half-ellipse bulging left from x1
+  //     goes from (x1, y2) → arc → (x1, y1)
+  const dfPtsL = ellipseArc(x1, df_cy, df_w, df_ry, Math.PI / 2, -Math.PI / 2, 10)
+  for (const pt of dfPtsL) pts.push(pt)
+
+  // 19. Left angled side of tuck tab back up to start
+  pts.push([x1, y1])
+  pts.push([tuck_xL, y0])
+
+  const cutOutline: Path2D = { points: pts, closed: true }
+
+  // ── Lock-slot notches (small rectangular cuts into inner side wall edges) ─
+  // On inner edge (x1 side) of RIGHT front side wall, near top (y2)
+  const slotRF: Path2D = {
     points: [
-      [tab_x1_L, slot_y],
-      [tab_x1_L + slot_w, slot_y],
-      [tab_x1_L + slot_w, slot_y + slot_h],
-      [tab_x1_L, slot_y + slot_h],
+      [x2, y2 + 3],
+      [x2 + lock_w, y2 + 3],
+      [x2 + lock_w, y2 + 3 + lock_h],
+      [x2, y2 + 3 + lock_h],
     ],
     closed: true,
   }
-  const slot2: Path2D = {
+  // On inner edge (x2 side) of LEFT front side wall, near top
+  const slotLF: Path2D = {
     points: [
-      [tab_x2_L - 0.5, slot_y],
-      [tab_x2_L - 0.5 + slot_w, slot_y],
-      [tab_x2_L - 0.5 + slot_w, slot_y + slot_h],
-      [tab_x2_L - 0.5, slot_y + slot_h],
+      [x1 - lock_w, y2 + 3],
+      [x1, y2 + 3],
+      [x1, y2 + 3 + lock_h],
+      [x1 - lock_w, y2 + 3 + lock_h],
     ],
     closed: true,
   }
 
-  const cutPaths: Path2D[] = [
-    { points: cutOutline, closed: true },
-    slot1,
-    slot2,
-  ]
+  const cutPaths: Path2D[] = [cutOutline, slotRF, slotLF]
 
+  // ── Score lines (fold lines) ──────────────────────────────────────────────
   const scorePaths: Path2D[] = [
-    // Horizontal folds (center column)
-    { points: [[x_cl, y2], [x_cr, y2]], closed: false },
-    { points: [[x_cl, y3], [x_cr, y3]], closed: false },
-    { points: [[x_cl, y4], [x_cr, y4]], closed: false },
-    // Vertical folds: dust flaps
-    { points: [[x_cl, y2 - df_h], [x_cl, y2]], closed: false },
-    { points: [[x_cr, y2 - df_h], [x_cr, y2]], closed: false },
-    // Vertical folds: side walls
-    { points: [[x_cl, y3], [x_cl, y4]], closed: false },
-    { points: [[x_cr, y3], [x_cr, y4]], closed: false },
+    // Lid fold line
+    { points: [[x1, y1], [x2, y1]], closed: false },
+    // Bottom of lid / top of front wall
+    { points: [[x1, y2], [x2, y2]], closed: false },
+    // Bottom of front wall / top of bottom panel
+    { points: [[x1, y3], [x2, y3]], closed: false },
+    // Bottom of bottom panel / top of back wall
+    { points: [[x1, y4], [x2, y4]], closed: false },
+    // Bottom of back wall / top of glue flap
+    { points: [[x1, y5], [x2, y5]], closed: false },
+    // Left fold lines for front side walls
+    { points: [[x1, y2], [x1, y3]], closed: false },
+    // Right fold lines for front side walls
+    { points: [[x2, y2], [x2, y3]], closed: false },
+    // Left fold lines for back side walls
+    { points: [[x1, y4], [x1, y5]], closed: false },
+    // Right fold lines for back side walls
+    { points: [[x2, y4], [x2, y5]], closed: false },
   ]
 
   return { cutPaths, scorePaths, width: totalW, height: totalH }
